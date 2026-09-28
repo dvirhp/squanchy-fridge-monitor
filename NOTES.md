@@ -2,7 +2,14 @@
 
 ## Time spent
 
-Approximately 8–10 hours, including planning, implementation, testing, browser verification, review, and documentation. I did not run a continuous timer, so this is an estimate rather than an exact tracked total.
+- Planning & architecture: ~30 minutes
+- Backend/import/analysis: ~1.5 hours
+- Frontend & UI: ~1 hour
+- Testing, verification & documentation: ~30–60 minutes
+- Total: approximately 3–4 hours
+
+I did not use a continuous timer, so this breakdown is an estimate rather than an
+exact tracked total.
 
 ## Decisions I made
 
