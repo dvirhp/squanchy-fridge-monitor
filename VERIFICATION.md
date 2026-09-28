@@ -1,4 +1,15 @@
-# Task 1 verification
+# Verification history
+
+This log records checks as they happened. Earlier phase limitations and counts
+describe those versions, not the current application. README.md and NOTES.md
+describe current behavior; later entries document corrections to earlier semantics.
+
+Latest complete code verification (Task 5 Phase 1, commit `8bf3699`): 57/57 backend
+tests and 10/10 frontend tests passed; root typecheck and both production builds
+passed. The formatting diff was reviewed for semantic changes. The Phase 2
+documentation-only sanity checks and requirement audit appear at the end of this log.
+
+## Task 1 verification
 
 Verified locally on Windows with Node 22.16.0 and npm 10.9.2 on 2026-09-28.
 
@@ -241,3 +252,41 @@ quality filtering and summary counts, separately preserved evidence, unchanged
 detail evidence, and dated findings continuing to count. This supersedes the
 original browser-verification row where unknown-date evidence alone matched the
 quality filter outside dated history. No new browser-verification claim is made.
+
+## Task 5 Phase 2 — documentation audit
+
+Compared the current implementation with SPEC sections 2, 19–22 and the user's
+Phase 2 requirements. README/NOTES describe current behavior; SPEC is preserved
+unchanged and PLAN/this log are explicitly labeled as historical records.
+
+| Requirement | Documentation / status |
+| --- | --- |
+| Problem, solution, historical uploads | README introduction; no live-monitoring or deployment claim |
+| Stack, prerequisites, install/setup/run, local URLs | README Run locally; root commands and actual Node/npm constraints |
+| Main flow and sample files | README Try the main flow; new Ashdod context, repeat duplicates, seeded findings; sample-data README |
+| Concise architecture and diagram | README Architecture; import transaction, analysis, historical snapshots, read APIs |
+| Threshold, spike/sustained, gaps, units, invalid/duplicate rows, moves, local time | README Data assumptions and rules, including period-specific undated-evidence semantics |
+| Tests/typecheck/build | README Checks and useful commands; existing root scripts |
+| Actual time spent | NOTES Time spent explicitly states untracked; reliable numeric total cannot be supplied without author input |
+| Unrequested decisions and reasons | NOTES Decisions I made distinguishes implementation/provisional choices from client answers |
+| Questions for Summer | NOTES nine open questions, including timezone/DST and unit confirmation |
+| Not done / another hour | NOTES current omissions, physical-device/accessibility and real-export checks proposed only |
+| AI usage, real mistake, how caught, evidence | NOTES CSV source-line bug/test/fix and rejected reconciliation proposal, linked code/tests/PLAN/commits |
+| Workflow artifacts and logical commits | SPEC, PLAN, verification history and implementation commits retained; separate documentation commit |
+| Public GitHub repository | Outstanding and intentionally deferred: no configured remote/public clone URL; no publishing or submission performed |
+
+Sanity checks on Node 22.16.0/npm 10.9.2:
+
+- All 13 checked local Markdown file links resolve; documented `npm run` commands
+  exist in root package.json, alongside `npm test`. Referenced evidence commits
+  contain the stated regression test and replacement-analysis implementation.
+- `npm run setup` succeeded against a previously absent isolated SQLite database:
+  both migrations applied, 4 branches / 5 fridges / 15 readings seeded, analyzer ran.
+- `npm run dev` started both services. Frontend `/` returned 200; backend `/health`
+  and frontend `/api/health` returned ok/connected; proxied dashboard returned
+  5 fridges, 1 temperature-issue fridge and 1 data-quality-issue fridge.
+- Package manifests, lockfile and application code are unchanged. A new clean
+  dependency install and full test/build run were not repeated for Markdown-only
+  edits; the preceding phase's verification is recorded above.
+- Public cloning cannot be tested until publication is authorized and a URL exists.
+  README therefore uses an explicitly marked `<repository-url>` placeholder.

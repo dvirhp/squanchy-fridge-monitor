@@ -1,7 +1,7 @@
 # Sample data
 
 Setup seeds illustrative readings directly from `backend/prisma/seed.ts`.
-Task 2 also accepts these standalone logger CSVs through `POST /imports`.
+Upload these standalone logger CSVs through `/upload` or `POST /imports`.
 Every CSV contains only time and temperature (except the deliberately unsupported
 missing-columns fixture). Logger/branch/fridge metadata is provided separately.
 
@@ -25,7 +25,7 @@ The importer reports duplicates within a file and against earlier imports/seeds.
 
 These are representative exports, not actual files supplied by the client.
 The Rishon LeZion / Cream cakes / TL-0388 seed keeps the warming readings from SPEC.
-Task 3 runs the real historical analyzer after imports and during setup. The spike
+The real historical analyzer runs after imports and during setup. The spike
 is counted separately, warming yields a temperature incident, and ERR/gaps yield
 data-quality findings. No incident records are manufactured by the seed.
 

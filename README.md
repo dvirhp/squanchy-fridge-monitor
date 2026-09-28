@@ -1,383 +1,158 @@
 # Squanchy Bakery Fridge Monitor
 
-Summer currently combines weekly logger exports by hand. This project turns
-those readings into a mobile-friendly view of fridge temperatures and data quality.
+Summer manages 12 bakery branches and combines weekly logger exports by hand.
+This mobile-first app turns **uploaded historical CSV readings** into an all-fridge
+overview, temperature history, sustained high-temperature incidents, and data-quality
+evidence. It helps answer “when was this fridge above 5°C, and for how long?”
+It is not live monitoring and does not infer causes such as an open door.
 
-**Current scope: Task 4 product/UI.** Upload CSV files, review all fridges on a
-mobile-first dashboard, and inspect accumulated temperature/data-quality history.
-These are historical uploaded records, not live monitoring.
+## Run locally
 
-## Local quick start
+Prerequisites: Git, **Node.js 22.16+ within Node 22**, and **npm 10+**.
+Internet is needed for dependency/Prisma-engine installation; no account, database
+server, Docker, or paid service is required to run the app.
 
-Prerequisites: Node.js 22.16 or newer within Node 22, and npm 10 or newer.
-No account, database server, paid service, or deployment is needed.
-Internet access is needed to install dependencies and download Prisma engines.
+Replace `<repository-url>` with the actual clone URL, then run:
 
 ```bash
-npm install
+git clone <repository-url> squanchy-fridge-monitor
+cd squanchy-fridge-monitor
+npm ci
 npm run setup
 npm run dev
 ```
 
-Setup copies `.env.example` to `backend/.env` only if missing, generates Prisma
-Client, opens/creates the SQLite file, applies committed migrations, seeds the database,
-and runs historical analysis. It is safe to repeat:
-existing configuration and data are preserved. The default database is
-`backend/prisma/dev.db`; keep that local file out of Git.
+Open **http://127.0.0.1:5173**. Backend health:
+http://127.0.0.1:3000/health (also available through `/api/health` on the frontend).
 
-- Frontend: http://localhost:5173
-- Backend: http://localhost:3000/health
-- Frontend proxy: http://localhost:5173/api/health
+Setup copies `.env.example` to `backend/.env` if absent, generates Prisma Client,
+creates/migrates SQLite, seeds illustrative readings, and runs the real analyzer.
+The default database is `backend/prisma/dev.db`; no manual configuration is needed.
+Setup preserves existing uploads and can be repeated; derived findings are rebuilt.
+Stop servers before rerunning setup or generating Prisma Client, especially on Windows.
+Both servers bind to localhost; ports 5173 and 3000 must be free. Stop with Ctrl+C.
+If changing backend `PORT`, also change the proxy target in `frontend/vite.config.ts`.
 
-The landing page shows all five seeded fridges, with problems first. Stop both development
-servers with Ctrl+C. Both bind to the local machine. Ports 5173 and 3000 must be
-available; changing the backend port also requires updating the Vite proxy.
-Stop development servers before rerunning setup or generating Prisma Client.
+## Try the main flow
 
-## Root commands
+1. **Dashboard (`/`)** shows every fridge, with problems first and separate
+   temperature/data-quality indicators. The demo has 4 branches, 5 fridges and
+   15 readings; it is not a full inventory of Summer's 12 branches.
+2. **Upload (`/upload`)**: choose `sample-data/invented-ashdod.csv`, then enter
+   new logger `LOGGER-9876`, Celsius, 10-minute interval, new branch `Ashdod`,
+   new fridge `Display 7`, and local start `2031-02-03 00:00`.
+   Expect 2 accepted readings. Repeat with the existing logger/location to see
+   2 duplicates skipped. Use **Back to overview** to see the new fridge.
+3. **Fridge history (`/fridges/:id`)**: open its card for the chart and findings.
+   Open seeded **Rishon LeZion / Cream cakes** to see sustained warming; open
+   **Jerusalem / Dairy** for invalid-reading and gap evidence. Choose a historical
+   date range to inspect earlier records.
 
-| Command | Purpose |
-| --- | --- |
-| `npm run setup` | Prepare config, client, database, and seed |
-| `npm run dev` | Run both applications with reload |
-| `npm run dev:frontend` | Run only Vite |
-| `npm run dev:backend` | Run only NestJS |
-| `npm run build` | Build both applications |
-| `npm run typecheck` | Check application, seed, config, and test TypeScript |
-| `npm test` | Run backend tests with isolated databases and focused frontend tests |
-| `npm run db:generate` | Regenerate Prisma Client |
-| `npm run db:prepare` | Open/create the configured SQLite file without resetting it |
-| `npm run db:migrate` | Create/apply a development migration; prompts for a name |
-| `npm run db:deploy` | Apply committed migrations |
-| `npm run db:seed` | Rerun the additive, idempotent seed |
-| `npm run db:analyze` | Recompute findings from all accumulated fridge history |
-| `npm run db:studio` | Inspect the local database |
+Uploads collect context missing from files: logger, branch, fridge, and source
+unit/start time when required. Existing or new entities use the same workflow.
+A deliberate logger move requires its actual local start time. Import results show
+accepted/invalid/duplicate rows and analysis totals across the affected fridges'
+accumulated history, not only newly created incidents.
 
-Run setup before builds/tests. The tests create, migrate, seed, and remove their
-own temporary database; they do not reset the developer database.
+More fixtures and exact expected results are in [sample-data/README.md](sample-data/README.md).
+They are representative examples, not actual client-uploaded files. Setup seeds
+readings, never derived incidents.
 
-## Stack and architecture
+## Data assumptions and rules
 
-React, TypeScript, Vite, and React Router in `frontend/`; NestJS and TypeScript
-in `backend/`; Prisma and SQLite for local relational storage. npm workspaces
-share a root lockfile. Prisma 6 and Vite 6 are deliberately pinned to compatible
-release lines for the available Node 22.16 environment.
+- **Local timestamps:** supported formats are `YYYY-MM-DD HH:mm`,
+  `YYYY-MM-DDTHH:mm`, and `DD/MM/YYYY HH:mm`, each with optional seconds.
+  Normalized measurement times are timezone-free `YYYY-MM-DDTHH:mm:ss`.
+  No UTC/DST conversion or timezone guessing occurs. Audit/upload times are separate.
+- **Units:** each new logger requires explicit Celsius or Fahrenheit configuration;
+  temperatures never determine the unit. Fahrenheit uses `C = (F - 32) × 5 / 9`.
+  The seeded Haifa logger is provisionally Fahrenheit, to confirm with Summer.
+  Charts and analysis use Celsius; raw source values remain stored.
+- **CSV validation:** comma-delimited UTF-8, optional BOM, quoted fields, either
+  column order and out-of-order readings are supported. Case-insensitive aliases
+  are `Time/Timestamp/DateTime` and `Temperature/Temp`. Limits: 2 MiB, 10,000 data
+  rows, 16 KiB per parsed record. Malformed/ambiguous files fail atomically.
+  Individual invalid rows, including ERR and invalid dates, are retained and reported.
+- **Duplicates:** valid identity is logger + normalized timestamp + Celsius value,
+  within and across uploads; filenames do not matter. Invalid identity also includes
+  fridge, unit and exact raw fields. Repeat imports retain original reading provenance.
+  Different values at one timestamp remain evidence of a conflict, not duplicates.
+- **Logger moves:** import/reading snapshots preserve historical fridge ownership
+  and unit/interval context. Periods are start-inclusive/end-exclusive. Moves append
+  a period and close the previous one; old readings stay with their original fridge.
+  Split files spanning periods. Contradictory/backdated moves are rejected; an
+  entirely undated file requires an explicitly selected existing period.
+- **Temperature incidents:** strictly above 5°C for at least two distinct consecutive
+  valid high observations. A single high followed by continuous recovery is a
+  temporary spike, not a sustained incident; an isolated final high is unconfirmed.
+  Recovery is the next continuous reading at or below 5°C. Duration is recovery
+  minus first high: a sampling-based estimate, not an exact threshold-crossing time.
+  Ongoing/interrupted incidents have unknown end/duration, never time extended to now.
+- **Continuity and gaps:** expected sampling defaults to 15 minutes and uses historical
+  import snapshots. More than one interval breaks temperature continuity; strictly
+  more than two intervals reports a data gap. Interval changes break continuity;
+  gap detection uses the smaller neighboring interval. Dated ERR counts as an
+  observation for gap bounds but breaks temperature continuity. Invalid/conflicting
+  points—including valid + ERR at the same timestamp—cannot extend a run or chart line.
+  Lines also stop at assignment boundaries. No gaps are invented outside observed bounds.
+- **Historical filtering:** default is all accumulated imports. Date bounds are inclusive
+  local days; findings match by overlap and keep full observed bounds/duration.
+  Ongoing/interrupted overlap ends at the last observed high. Filters stay in the URL;
+  detail navigation preserves dates. Summary counts apply before the status filter.
+  Fridge history always shows undated evidence separately; dashboard cards retain its
+  count. With either date bound selected,
+  it does **not** affect period quality counts/status; without dates it contributes
+  to accumulated quality counts. “No detected issue” does not describe current conditions.
+
+## Architecture
+
+React + TypeScript + Vite/React Router, plain CSS and Recharts; NestJS + TypeScript;
+Prisma + local SQLite. npm workspaces provide one install and startup command.
 
 ```text
-React pages -> Vite /api proxy -> NestJS read/import controllers -> Prisma -> SQLite
-
-Branch -> Fridge
-Logger -> LoggerAssignment <- Fridge
-LoggerAssignment -> Import (permanent logger/fridge/config snapshots)
-Import -> Reading (matching historical logger/fridge)
-Fridge / optional Logger -> Incident (derived from accumulated history)
+React pages → Vite /api proxy → NestJS controllers → services → Prisma → SQLite
+Branch → Fridge ← LoggerAssignment → Logger
+Import → Reading (permanent historical ownership/configuration)
+Fridge → Incident (derived from accumulated readings)
 ```
 
-The thin import controller delegates to an import service. Parsing, column mapping,
-normalization, validation, canonical identity, and assignment resolution are separate
-modules. No application behavior depends on seed names or sample files.
+`backend/src/imports/` separates parsing, mapping, normalization, validation,
+deduplication and assignment resolution. `backend/src/analysis/` contains testable
+rules and synchronous recomputation. Each import transaction saves data and replaces
+affected-fridge findings together; failure rolls everything back. Late readings can
+change findings; derived IDs are not stable. `backend/src/views/` serves read-only
+queries. `frontend/src/` contains the three pages and derives chart segments from
+simple reading data. No behavior depends on sample names or logger IDs.
 
-## Data semantics
+Backend routes: `GET /health`, `GET /import-options`,
+`GET /dashboard?from=&to=&branchId=&status=`, `GET /fridges/:id?from=&to=`,
+and multipart `POST /imports`. The frontend uses the `/api` proxy prefix.
 
-- Measurement, assignment, and event times are **branch-local strings** in
-  `YYYY-MM-DDTHH:mm:ss` format. They have no offset or `Z` suffix and are never
-  converted to UTC. The seed explicitly supplies normalized strings and preserves
-  original timestamp text. The importer supports the formats documented below.
-- `createdAt`, `updatedAt`, and `importedAt` are system audit instants; these
-  are separate from the client's timezone-free measurement times.
-- Import logger/fridge/unit/interval snapshots are authoritative historical
-  context. Assignment links record provenance; never derive historical ownership
-  from an assignment's current fields. Logger moves must create a new assignment
-  and close the old one, without rewriting import or reading snapshots.
-- A composite foreign key enforces matching logger/fridge context between a
-  reading and its import. Foreign keys restrict deletion/key changes of referenced
-  entities. There are no editing endpoints in Task 1.
-- Branch matching uses trimmed, lowercase names in the seed. Fridge names are
-  unique within each branch. Assignment periods are half-open `[from, to)`;
-  the importer rejects overlaps and files spanning assignment intervals.
-- Invalid readings preserve raw values and nullable normalized fields. ERR is
-  stored as invalid, with a null Celsius value.
-- A unique canonical key prevents duplicate readings within and across imports;
-  different normalized temperatures at the same timestamp remain distinguishable.
-- Seed import counts partition rows into accepted-valid, invalid, and duplicate.
-  Invalid rows are retained; “accepted” here means valid for temperature analysis.
+## Checks and useful commands
 
-## Business rules
-
-Temperature strictly above 5°C is high. Two or more consecutive valid high
-observations at distinct timestamps constitute a sustained incident. One high
-followed by a continuous recovery is a spike, not a temperature incident.
-Gaps and invalid readings never imply uninterrupted observed warming.
-
-Expected sampling defaults to 15 minutes. Analysis uses the historical Import
-snapshot interval. Temperature continuity allows at most one interval between
-valid observations; gap reporting requires strictly more than twice the interval.
-Gaps describe missing observations without guessing their cause.
-
-Haifa's legacy logger is provisionally configured as Fahrenheit; this is an
-assumption to confirm with Summer. Normalization uses `C = (F - 32) * 5 / 9`.
-The seed has explicitly supplied Celsius fixture values, not a conversion service.
-
-## Demo data and project notes
-
-See [sample-data/README.md](sample-data/README.md) for fixture provenance.
-The seed contains 4 branches, 5 fridges, 4 loggers, 5 assignments, 5 illustrative
-imports and 15 readings. The seed inserts **zero incidents**; setup runs the real
-analyzer, producing one temperature incident, one gap, one invalid-reading finding,
-and one temporary spike summary. It demonstrates healthy readings,
-a spike, warming, Fahrenheit metadata, ERR, a gap, logger movement, and branch
-capitalization. Exact duplicate rejection is covered by the foundation test.
-CSV samples and upload instructions are described below.
-
-[SPEC.md](SPEC.md) is the supplied assignment specification.
-[PLAN.md](PLAN.md) records the approved Task 1 scope and corrections.
-[NOTES.md](NOTES.md) records decisions, questions, and actual AI usage.
-
-## CSV import API
-
-`POST /imports` accepts multipart/form-data:
-
-| Field | Rule |
-| --- | --- |
-| `file` | Required UTF-8 CSV, up to 2 MiB and 10,000 data rows |
-| `loggerExternalId` | Required nonempty identifier; case-sensitive, trimmed |
-| `branch`, `fridge` | Required names; trimmed and matched case-insensitively |
-| `temperatureUnit` | CELSIUS or FAHRENHEIT; required when creating a logger |
-| `expectedIntervalMinutes` | Optional integer 1–1440; defaults to 15 for new loggers |
-| `assignmentValidFrom` | Explicit branch-local start for a first assignment or forward move |
-| `assignmentId` | Optional existing assignment; required if all source timestamps are invalid |
-
-Unknown metadata fields are rejected. Existing logger configuration is reused;
-supplying a conflicting unit or interval returns 409 rather than changing it.
-New branches/fridges/loggers are created transactionally, so any failed import
-also rolls back their creation. No registry endpoint is needed to use a new context.
-
-Run this from the repository root (use `curl.exe` in Windows PowerShell):
+Run from the repository root after setup:
 
 ```bash
-curl -X POST http://localhost:3000/imports -F "file=@sample-data/invented-ashdod.csv" -F "loggerExternalId=LOGGER-9876" -F "branch=Ashdod" -F "fridge=Display 7" -F "temperatureUnit=CELSIUS" -F "expectedIntervalMinutes=10" -F "assignmentValidFrom=2031-02-03 00:00"
+npm test
+npm run typecheck
+npm run build
 ```
 
-A successful request returns HTTP 201:
+Tests cover parsing, normalization, duplicates, assignments, cumulative analysis,
+dashboard semantics, chart continuity, and focused UI interactions. Backend tests
+use isolated temporary databases. Both production builds are generated locally;
+`build` does not deploy or start a server.
 
-```json
-{
-  "importId": "...",
-  "assignmentId": "...",
-  "totalRows": 2,
-  "acceptedRows": 2,
-  "invalidRows": 0,
-  "duplicateRows": 0,
-  "analysis": {
-    "fridgeIds": ["..."],
-    "temperatureIncidents": 0,
-    "dataGaps": 0,
-    "invalidReadings": 0,
-    "temporarySpikes": 0
-  }
-}
-```
+`npm run db:analyze` rebuilds findings; `npm run db:studio` opens the local database
+viewer. If running `npm run db:seed` alone, run analysis afterward.
 
-Repeat uploads create a new Import summary with duplicate counts, retaining the
-original Reading records and provenance. Counts satisfy
-`totalRows = acceptedRows + invalidRows + duplicateRows`.
-Invalid counts include only newly retained invalid rows.
-Analysis counts cover accumulated history for the affected fridges, not just this
-file. `analysis.invalidReadings` counts quality findings, including same-time conflicts.
+## Scope and development record
 
-## Supported CSV contract
+No auth, notifications, hardware ingestion, exports, historical editing or cloud
+deployment. Selected history is returned without pagination/downsampling; narrow
+large histories by date. See [NOTES.md](NOTES.md) for decisions, open questions,
+limitations, time reporting and actual AI corrections.
 
-- Comma-delimited UTF-8, optional BOM, LF/CRLF/CR line endings, standard CSV quoting
-  and escaped quotes. Empty physical lines are skipped. Quoted multiline fields
-  are preserved; their source row number is their starting physical line.
-- Header matching trims surrounding whitespace and ignores case. Timestamp aliases:
-  **Time, Timestamp, DateTime**. Temperature aliases: **Temperature, Temp**.
-  Aliases live only in `column-mapping.ts`. Either column order is accepted.
-- Exactly one recognized column per semantic field is required. Extra unrelated
-  columns are ignored; branch/fridge/logger context always comes from metadata.
-  Missing/ambiguous headers, malformed quoting, inconsistent row widths, invalid
-  UTF-8, NUL bytes, empty files, and header-only files fail before any persistence.
-- Each record is limited to 16 KiB by the CSV parser.
-- Times support `YYYY-MM-DD HH:mm`, `DD/MM/YYYY HH:mm`, optional seconds,
-  and `YYYY-MM-DDTHH:mm:ss`. Calendar dates and clock ranges are validated.
-  Offsets/Z suffixes are unsupported. Valid output is `YYYY-MM-DDTHH:mm:ss`.
-- Temperatures accept signed decimal notation with a dot. Units, decimal commas,
-  exponent notation, NaN, Infinity, and partial numbers are invalid.
-  Leading/trailing value whitespace is ignored for normalization but retained raw.
-- ERR/non-numeric temperatures become INVALID with null Celsius. Invalid times
-  become INVALID with null recordedAt. An independently valid temperature/time
-  is still retained, and validationError explains each failing field.
-
-## Identity and historical assignments
-
-The canonical identity is versioned JSON: valid rows use logger ID, normalized
-local timestamp, and normalized Celsius. Invalid rows use logger ID, fridge ID,
-unit, and both exact raw fields. File names, import IDs, and source line numbers
-do not participate. Decimal arithmetic avoids intermediate binary conversion
-artifacts; values are ultimately persisted as JavaScript/SQLite floating-point
-numbers. Identity uses those normalized numbers without display rounding or an
-epsilon tolerance. Sub-float distinctions cannot be retained by this schema.
-
-Rows are sorted by local timestamp, with unknown times last and source line as
-the tie-breaker. Database consumers must still request explicit ordering.
-The service checks existing keys, deduplicates the current file, and relies on the
-unique constraint as a final guard. A cross-fridge duplicate is a conflict.
-Concurrent conflicts fail atomically with a retry message; there is no background
-retry queue.
-
-An existing assignment must contain all parseable row timestamps, even if their
-temperatures are invalid. Historical uploads use the matching closed interval.
-First assignments and forward moves require an explicit start; moves close the
-previous open interval and append a new one. No automatic backdated splitting is
-performed. Moves contradicting stored readings or unknown-time readings in the
-previous assignment fail. Files spanning assignments must be split.
-All-invalid-time files need an explicit existing assignment ID. This records
-operator-provided context without inventing measurement dates.
-
-Imports snapshot logger/fridge/unit/interval, and readings retain matching ownership.
-No import path rewrites historical ownership. Task 1 seed label corrections keep
-entity IDs intact; setup upgrades legacy identity keys without changing measurements.
-Re-run `npm run setup` before starting the updated backend on a Task 1 database.
-
-The HTTP layer uses Nest's [multipart interceptor](https://docs.nestjs.com/techniques/file-upload);
-CSV syntax handling uses [csv-parse](https://csv.js.org/parse/api/sync/).
-
-## Historical analysis and uncertainty
-
-The rules are centralized in `backend/src/analysis/analysis.rules.ts`.
-A recovered incident starts at the first high, ends at the next continuous <=5°C
-reading, and records the peak. Duration is recovery minus first high in branch-local
-minutes: 06:15 high, 06:30 high, 06:45 recovery gives 30 minutes. This is a
-sampling-based historical estimate, not proof of the exact physical threshold
-crossing time. Local calendar arithmetic applies no timezone or DST conversion.
-
-Temperature details carry one of three states:
-
-- RECOVERED: observed continuous recovery, with end and duration.
-- ONGOING: no recovery observed before the dataset ends; end and duration are null.
-  This describes historical observations, not live fridge health.
-- INTERRUPTED: missing/invalid/conflicting observations, interval changes, or an
-  assignment end broke continuity. End and duration remain null; lastObservedHighAt
-  and interruptionReason describe the observed limit.
-
-No duration extends to upload time or current time. A lone final high is unconfirmed:
-neither a sustained incident nor a recovered spike. The system never claims a
-cause such as a door opening.
-
-With a 15-minute interval, 06:00 to 06:30 breaks temperature continuity but does
-not create a DATA_GAP; 06:00 to 06:31 does both. If neighboring snapshot intervals
-differ, continuity breaks and gap reporting uses the smaller interval.
-Timestamped ERR readings count as logger observations for gap bounds, while
-separately breaking temperature continuity. Different values at one timestamp
-form one conflicting point and an INVALID_READING finding, never consecutive highs.
-If a timestamp contains both a valid value and an invalid reading (such as ERR),
-the invalid finding is preserved and that entire point interrupts continuity;
-the valid value cannot extend or establish a sustained run.
-Undated invalid readings have null startedAt, are excluded from chronological
-sequencing, and do not suppress supported dated incidents. They remain evidence
-that the dataset may be incomplete.
-
-No gaps are inferred before the first observation, after the last, or across
-assignments. Gap duration measures the interval between bounding observations,
-not temperature conditions during that interval.
-
-## Reanalysis and persistence
-
-ImportsService delegates to AnalysisService after writing readings and before
-committing the same transaction. Analysis failure rolls back the import and
-replacement of findings. The service loads full accumulated histories for affected
-fridges, partitions by historical fridge/logger/assignment, computes findings,
-deletes previous Incident rows for those fridges, then inserts the new set.
-A logger move also recomputes the previous fridge when its assignment closes.
-Historical ownership comes from reading/import snapshots.
-
-Import boundaries do not split continuous sequences. Late historical readings
-can remove gaps, join high sequences, or reveal recovery; later readings can close
-an ongoing incident. Repeat analysis and duplicate-only uploads preserve logical
-finding content/counts. Derived database IDs and audit timestamps may change.
-Unrelated fridges remain untouched.
-
-Incident.startedAt is nullable for undated evidence. The existing TEMPERATURE,
-DATA_GAP, and INVALID_READING types remain; small details objects store assignment
-context, state/bounds, or validation/source references. Spikes are returned by
-the pure analyzer and counted in summaries rather than persisted as incidents.
-Conflicting observations do not alter source Reading values or statuses.
-
-`npm run db:analyze` rebuilds all findings; setup invokes it after seeding.
-If you run `npm run db:seed` alone, run analysis afterward. This straightforward
-full-scope approach targets the small local dataset, without background processing.
-
-## Product pages and historical filters
-
-- `/`: all fridges, problems first; separate temperature and data-quality badges,
-  latest valid reading in range, summary counts, and date/branch/status filters.
-- `/upload`: one workflow for existing/new logger and branch/fridge, source unit,
-  placement start or deliberate move, then accepted/invalid/duplicate counts and
-  analysis totals for accumulated affected-fridge history.
-- `/fridges/:id`: a Celsius chart with 5°C reference, sampled incident bounds,
-  recovery/ongoing/interrupted state, known duration/peak, and separate data issues.
-
-The default range is **all uploaded history**, not the current day or last import.
-`from` and `to` are inclusive branch-local calendar dates (`YYYY-MM-DD`). Filters
-stay in the URL; detail links and the return link preserve dates. Findings match
-by overlap and retain full observed bounds/duration even when they start before
-the selected range. Open/interrupted findings end their queryable observed range
-at `details.lastObservedHighAt`; they do not extend to today. Unknown-date invalid
-evidence stays separately visible under every date filter.
-
-With either date bound selected, undated findings contribute only to `undatedCount`,
-not period-specific `qualityCount`, primary status, quality summary count or quality
-status filtering. With no date bounds, quality counts include all accumulated
-evidence as before. Fridge details always retain the separate Date unknown list.
-
-Counts apply after dates/branch, before status. Temperature and quality counts may
-overlap. Temperature findings take sorting priority, followed by quality, no
-detected issue, and no data. The quality filter includes fridges that also have
-temperature findings. All fridges in the selected branch remain represented even
-when they have no matching readings. No detected issue is not a claim of current
-health; a single isolated high is not a sustained incident.
-
-Chart segments are derived in the frontend from simple readings and immutable
-import snapshots. Invalid/conflicting timestamp groups are omitted completely,
-including a valid value sharing a timestamp with ERR. Lines stop at missed
-expected observations, interval changes, and logger/assignment boundaries. A
-missed expected observation can break a line without reaching the analyzer's
-larger data-gap reporting threshold. Time spacing uses local Gregorian arithmetic,
-without timezone conversion. Readouts show full dates, logger ID and Celsius;
-previous/next controls support keyboard and touch. No raw-reading table is added.
-
-## UI read API
-
-Frontend requests use the `/api` proxy prefix; backend paths below do not.
-
-| Endpoint | Response |
-| --- | --- |
-| `GET /import-options` | `{ branches: [{id,name,fridges:[{id,name}]}], loggers: [{id,externalId,temperatureUnit,expectedIntervalMinutes,assignments:[{id,fridgeId,validFrom,validTo}]}] }` |
-| `GET /dashboard?from=&to=&branchId=&status=` | `{ counts: {total,temperature,quality,clear,noData}, fridges: [{id,name,branch:{id,name},status,temperatureCount,qualityCount,undatedCount,latestReading:{recordedAt,temperatureCelsius}\|null,latestUploadedAt}] }` |
-| `GET /fridges/:id?from=&to=` | `{ id,name,branch:{id,name},readings,temperatureIncidents,dataQuality,undatedQuality }` |
-
-Dashboard `status` is `temperature`, `quality`, `clear`, or `no-data`; omit for all.
-Reading fields are `id`, `recordedAt`, `temperatureCelsius`, `status`,
-`validationError`, `loggerId`, `loggerExternalId`, `assignmentId`, and
-`expectedIntervalMinutes`. They contain no chart ticks or rendering structures.
-Findings retain persisted Incident fields (type, timestamps, nullable duration,
-peak, small details object and IDs). Reads do not recalculate or mutate findings.
-Invalid/reversed dates return 400; unknown fridge IDs return 404.
-
-`POST /imports` retains its existing multipart contract and now also returns
-`fridgeId` for navigation. Existing logger config is displayed, not inferred or
-overwritten. A new logger requires an explicit source unit and placement start;
-the sampling interval defaults to 15 minutes. New locations are created in the
-same transaction. Moves require choosing the move option and a local start time.
-Files must fit one location period; overlapping/contradictory moves are rejected.
-For an entirely undated file, choose an existing known period explicitly. Such a
-file cannot establish a brand-new logger placement by itself.
-
-Recharts is the only new runtime dependency; it supplies the responsive chart and
-tooltip/accessibility support. Its route is loaded on demand. Vitest, jsdom and
-Testing Library are development-only test dependencies. No UI/form/date/state
-framework, administration screens, auth, notifications, live ingestion, exports,
-history editing, or deployment is included. Reads return the full selected local
-history without pagination/downsampling; very large multi-year histories should
-be narrowed by date. This is deliberately a small local product, not a reporting
-platform. Mobile verification uses Chromium emulation, not physical iOS devices.
+[SPEC.md](SPEC.md) preserves the assignment; [PLAN.md](PLAN.md) preserves approval
+history; [VERIFICATION.md](VERIFICATION.md) records checks and known verification
+limits. These are retained as evidence of the AI-assisted workflow.

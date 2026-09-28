@@ -1,4 +1,10 @@
-# Task 1 approval record
+# Implementation approval history
+
+This is a historical record of approvals and corrections, not a current feature
+list. Task boundaries below describe the scope authorized at each point in time.
+See README.md for the application's current behavior and setup.
+
+## Task 1 approval record
 
 The user approved initialization only: npm workspaces, React/Vite shell,
 NestJS health endpoint, Prisma/SQLite schema, first migration, seed, documentation,
