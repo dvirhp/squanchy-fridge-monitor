@@ -39,3 +39,16 @@ findings atomically; logical results must be stable, not database IDs. Undated
 invalid evidence is separate and does not suppress dated analysis. Keep details
 small. Preserve one-interval continuity versus two-interval gap reporting and
 null duration for ongoing/interrupted incidents. Stop before Task 4.
+
+## Task 4 approval and implementation boundaries
+
+Approved: all-fridge dashboard, URL date/branch/status filters, upload workflow,
+fridge history with threshold chart and separate incident/data-quality lists,
+three small read endpoints, mobile layout, accessible controls and focused tests.
+Reuse the schema and analyzer; historical ownership and local timestamps remain.
+
+User simplifications adopted: API returns simple readings/config snapshots rather
+than chart ticks/segments; frontend derives continuity. New entities and deliberate
+logger moves remain inside upload, with no administration screens. No full reading
+table or broad UI/snapshot suite. Recharts is approved; no UI/form/date/server-state
+framework. Stop at Task 4 after verification, without final submission work.

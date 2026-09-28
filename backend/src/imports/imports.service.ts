@@ -75,7 +75,7 @@ export class ImportsService {
           ? await tx.import.findMany({ where: { assignmentId: closedAssignmentId }, select: { fridgeId: true }, distinct: ['fridgeId'] })
           : [];
         const analysis = await this.analysis.recomputeFridges(tx, [fridge.id, ...previousContexts.map(context => context.fridgeId)]);
-        return { importId: imported.id, assignmentId: assignment.id, totalRows: rows.length, acceptedRows, invalidRows, duplicateRows, analysis };
+        return { importId: imported.id, fridgeId: fridge.id, assignmentId: assignment.id, totalRows: rows.length, acceptedRows, invalidRows, duplicateRows, analysis };
       }, { maxWait: 5000, timeout: 20000 });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002', 'P2034'].includes(error.code)) {

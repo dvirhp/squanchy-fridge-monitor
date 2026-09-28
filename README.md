@@ -1,11 +1,11 @@
 # Squanchy Bakery Fridge Monitor
 
-Summer currently combines weekly logger exports by hand. This project will turn
+Summer currently combines weekly logger exports by hand. This project turns
 those readings into a mobile-friendly view of fridge temperatures and data quality.
 
-**Current scope: Task 3 historical analysis.** The backend imports CSV readings
-and analyzes accumulated history for temperature and data-quality findings.
-The frontend remains a connection shell. Dashboard and charts are future work.
+**Current scope: Task 4 product/UI.** Upload CSV files, review all fridges on a
+mobile-first dashboard, and inspect accumulated temperature/data-quality history.
+These are historical uploaded records, not live monitoring.
 
 ## Local quick start
 
@@ -29,7 +29,7 @@ existing configuration and data are preserved. The default database is
 - Backend: http://localhost:3000/health
 - Frontend proxy: http://localhost:5173/api/health
 
-The shell should report “Backend and database connected.” Stop both development
+The landing page shows all five seeded fridges, with problems first. Stop both development
 servers with Ctrl+C. Both bind to the local machine. Ports 5173 and 3000 must be
 available; changing the backend port also requires updating the Vite proxy.
 Stop development servers before rerunning setup or generating Prisma Client.
@@ -44,7 +44,7 @@ Stop development servers before rerunning setup or generating Prisma Client.
 | `npm run dev:backend` | Run only NestJS |
 | `npm run build` | Build both applications |
 | `npm run typecheck` | Check application, seed, config, and test TypeScript |
-| `npm test` | Run parser, normalization, foundation, and import tests with isolated databases |
+| `npm test` | Run backend tests with isolated databases and focused frontend tests |
 | `npm run db:generate` | Regenerate Prisma Client |
 | `npm run db:prepare` | Open/create the configured SQLite file without resetting it |
 | `npm run db:migrate` | Create/apply a development migration; prompts for a name |
@@ -64,7 +64,7 @@ share a root lockfile. Prisma 6 and Vite 6 are deliberately pinned to compatible
 release lines for the available Node 22.16 environment.
 
 ```text
-React shell -> Vite /api proxy -> NestJS health controller -> Prisma -> SQLite
+React pages -> Vite /api proxy -> NestJS read/import controllers -> Prisma -> SQLite
 
 Branch -> Fridge
 Logger -> LoggerAssignment <- Fridge
@@ -307,11 +307,72 @@ Conflicting observations do not alter source Reading values or statuses.
 If you run `npm run db:seed` alone, run analysis afterward. This straightforward
 full-scope approach targets the small local dataset, without background processing.
 
-## Future Task 4 direction
+## Product pages and historical filters
 
-The dashboard will use accumulated history, with simple date-range, branch, and
-status filters and visual priority for problems. Fridge Details will support
-date-range historical investigation. Queries should select findings overlapping
-the requested range, including events starting earlier; interrupted events use
-their observed bounds and undated evidence stays explicitly undated.
-These UI features are not implemented in Task 3.
+- `/`: all fridges, problems first; separate temperature and data-quality badges,
+  latest valid reading in range, summary counts, and date/branch/status filters.
+- `/upload`: one workflow for existing/new logger and branch/fridge, source unit,
+  placement start or deliberate move, then accepted/invalid/duplicate counts and
+  analysis totals for accumulated affected-fridge history.
+- `/fridges/:id`: a Celsius chart with 5°C reference, sampled incident bounds,
+  recovery/ongoing/interrupted state, known duration/peak, and separate data issues.
+
+The default range is **all uploaded history**, not the current day or last import.
+`from` and `to` are inclusive branch-local calendar dates (`YYYY-MM-DD`). Filters
+stay in the URL; detail links and the return link preserve dates. Findings match
+by overlap and retain full observed bounds/duration even when they start before
+the selected range. Open/interrupted findings end their queryable observed range
+at `details.lastObservedHighAt`; they do not extend to today. Unknown-date invalid
+evidence stays separately visible under every date filter.
+
+Counts apply after dates/branch, before status. Temperature and quality counts may
+overlap. Temperature findings take sorting priority, followed by quality, no
+detected issue, and no data. The quality filter includes fridges that also have
+temperature findings. All fridges in the selected branch remain represented even
+when they have no matching readings. No detected issue is not a claim of current
+health; a single isolated high is not a sustained incident.
+
+Chart segments are derived in the frontend from simple readings and immutable
+import snapshots. Invalid/conflicting timestamp groups are omitted completely,
+including a valid value sharing a timestamp with ERR. Lines stop at missed
+expected observations, interval changes, and logger/assignment boundaries. A
+missed expected observation can break a line without reaching the analyzer's
+larger data-gap reporting threshold. Time spacing uses local Gregorian arithmetic,
+without timezone conversion. Readouts show full dates, logger ID and Celsius;
+previous/next controls support keyboard and touch. No raw-reading table is added.
+
+## UI read API
+
+Frontend requests use the `/api` proxy prefix; backend paths below do not.
+
+| Endpoint | Response |
+| --- | --- |
+| `GET /import-options` | `{ branches: [{id,name,fridges:[{id,name}]}], loggers: [{id,externalId,temperatureUnit,expectedIntervalMinutes,assignments:[{id,fridgeId,validFrom,validTo}]}] }` |
+| `GET /dashboard?from=&to=&branchId=&status=` | `{ counts: {total,temperature,quality,clear,noData}, fridges: [{id,name,branch:{id,name},status,temperatureCount,qualityCount,undatedCount,latestReading:{recordedAt,temperatureCelsius}\|null,latestUploadedAt}] }` |
+| `GET /fridges/:id?from=&to=` | `{ id,name,branch:{id,name},readings,temperatureIncidents,dataQuality,undatedQuality }` |
+
+Dashboard `status` is `temperature`, `quality`, `clear`, or `no-data`; omit for all.
+Reading fields are `id`, `recordedAt`, `temperatureCelsius`, `status`,
+`validationError`, `loggerId`, `loggerExternalId`, `assignmentId`, and
+`expectedIntervalMinutes`. They contain no chart ticks or rendering structures.
+Findings retain persisted Incident fields (type, timestamps, nullable duration,
+peak, small details object and IDs). Reads do not recalculate or mutate findings.
+Invalid/reversed dates return 400; unknown fridge IDs return 404.
+
+`POST /imports` retains its existing multipart contract and now also returns
+`fridgeId` for navigation. Existing logger config is displayed, not inferred or
+overwritten. A new logger requires an explicit source unit and placement start;
+the sampling interval defaults to 15 minutes. New locations are created in the
+same transaction. Moves require choosing the move option and a local start time.
+Files must fit one location period; overlapping/contradictory moves are rejected.
+For an entirely undated file, choose an existing known period explicitly. Such a
+file cannot establish a brand-new logger placement by itself.
+
+Recharts is the only new runtime dependency; it supplies the responsive chart and
+tooltip/accessibility support. Its route is loaded on demand. Vitest, jsdom and
+Testing Library are development-only test dependencies. No UI/form/date/state
+framework, administration screens, auth, notifications, live ingestion, exports,
+history editing, or deployment is included. Reads return the full selected local
+history without pagination/downsampling; very large multi-year histories should
+be narrowed by date. This is deliberately a small local product, not a reporting
+platform. Mobile verification uses Chromium emulation, not physical iOS devices.

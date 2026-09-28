@@ -1,29 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Link, Route, Routes } from 'react-router-dom';
-import { getHealth } from './api/health';
-
-function Home() {
-  const [status, setStatus] = useState('Checking connection…');
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    setStatus('Checking connection…');
-    getHealth(controller.signal)
-      .then(() => setStatus('Backend and database connected.'))
-      .catch(() => { if (!controller.signal.aborted) setStatus('Cannot connect. Check that the backend is running.'); });
-    return () => controller.abort();
-  }, [attempt]);
-  return <main>
-    <p className="eyebrow">Squanchy Bakery</p>
-    <h1>Fridge Monitor</h1>
-    <p>The project foundation is ready. Uploads and fridge monitoring will follow in later tasks.</p>
-    <section aria-labelledby="connection-title">
-      <h2 id="connection-title">Local connection</h2>
-      <p role="status">{status}</p>
-      <button onClick={() => setAttempt(value => value + 1)}>Check again</button>
-    </section>
-  </main>;
-}
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import Dashboard from './pages/Dashboard';
+import Upload from './pages/Upload';
+const FridgeDetails = lazy(() => import('./pages/FridgeDetails'));
 export default function App() {
-  return <Routes><Route path="/" element={<Home />} /><Route path="*" element={<main><h1>Page not found</h1><Link to="/">Return home</Link></main>} /></Routes>;
+  return <><a className="skip-link" href="#content">Skip to content</a><header className="site-header"><Link className="brand" to="/"><span className="brand-mark" aria-hidden="true">S</span><span>Squanchy<span className="brand-sub">Fridge records</span></span></Link><nav aria-label="Main navigation"><NavLink to="/" end>Overview</NavLink><NavLink to="/upload">Upload</NavLink></nav></header>
+    <main id="content"><Suspense fallback={<p role="status">Loading page…</p>}><Routes><Route path="/" element={<Dashboard />} /><Route path="/upload" element={<Upload />} /><Route path="/fridges/:id" element={<FridgeDetails />} /><Route path="*" element={<><h1>Page not found</h1><Link to="/">Return to overview</Link></>} /></Routes></Suspense></main>
+    <footer>Squanchy Bakery · Historical logger records</footer></>;
 }

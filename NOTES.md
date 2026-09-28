@@ -129,3 +129,24 @@ following that sequence successfully started both applications.
   PLAN.md, analysis.service.ts, and repeat/undated tests in analysis.test.ts.
 - Preserve Task 4's historical dashboard with date/branch/status filters, problem
   prioritization, and date-range Fridge Details. No UI was added in Task 3.
+
+## Task 4 decisions and actual corrections
+
+- Kept all historical read logic in ViewsService and reused persisted findings.
+  No schema/analyzer changes. POST /imports adds only target fridgeId to its result.
+- Default all-history view, inclusive local dates, overlap-based findings, and
+  separately undated evidence avoid implying that the latest file is all history.
+- The user rejected backend chart rendering structures, a broader placement UI,
+  mandatory full reading table and broad frontend coverage. Implemented simple
+  readings, frontend segments, one upload form and focused state/continuity tests.
+- Verification found date controls disappeared when a details query failed. Kept
+  them mounted outside the fetched content and added a regression test so a user
+  can clear an invalid range without editing the URL.
+- The initial bundle included Recharts on the dashboard and exceeded Vite's 500 kB
+  warning. Lazy-loading FridgeDetails split the initial JS to about 281 kB and the
+  details/chart chunk to about 376 kB, without adding infrastructure.
+- The initial Vitest 3 dependency had a moderate audit advisory. Changed to patched
+  Vitest 4.1.11, compatible with this Node/Vite stack; final audit is clean.
+- jsdom does not integrate user-event's uploaded FileList with native validation
+  and FormData. The focused test adapts that boundary; real file selection,
+  validation and multipart submission were separately exercised in Chrome.

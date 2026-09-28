@@ -133,3 +133,94 @@ changing during verification.
 
 The temporary server/database were removed after verification. Task 4 UI,
 notifications, reporting, and background processing remain unimplemented.
+
+## Task 4 — Product/UI
+
+Verified on Windows, Node 22.16.0/npm 10.9.2, with local SQLite and headless
+installed Chrome driven through temporary Playwright tooling. Browser tooling
+and screenshots are outside the repository; no Playwright runtime dependency.
+
+- `npm ci`: clean lockfile install passed (527 packages); audit: 0 vulnerabilities.
+- `npm test`: 56 backend tests and 9 frontend tests. Backend additions cover
+  cumulative history, overlap across midnight without clipping incident duration,
+  undated evidence under filters, overlapping status counts, no-data fridges,
+  immutable move ownership, finite observed bounds, invalid dates and missing IDs.
+- Frontend coverage: chart segmentation (mixed valid/ERR, conflicts, missed
+  intervals, interval/assignment changes, calendar spacing); URL filters/detail
+  links, retry/empty state, explicit upload context/move/error retention, historical
+  incident/undated display, and recovery controls after an invalid date range.
+- Typecheck covers both workspaces, Prisma scripts and test configurations.
+- Both builds pass. Route splitting keeps dashboard/upload JS around 281 kB and
+  the on-demand details/chart chunk around 376 kB (minified; no size warning).
+- Fresh setup on a previously absent verification database applied both migrations,
+  seeded 4 branches / 5 fridges / 4 loggers / 15 readings, and derived one temperature
+  incident, one gap, one invalid finding and one temporary spike. No incidents seeded.
+
+### Browser verification
+
+All interactions below used the real Vite proxy, compiled Nest server and isolated
+database, except the deliberate network-failure simulation. No runtime page errors.
+
+| Scenario | Observed result |
+| --- | --- |
+| Dashboard landing | All 5 seed fridges, temperature problem first, data-quality next, correct counts |
+| Dashboard → upload → dashboard → details | New unseen logger `SUMMER-UNSEEN-42`, branch `Summer Test Bakery`, fridge `Pastry Cabinet`; 6 accepted, 1 invalid, 1 duplicate; dashboard updated to 6 fridges |
+| Historical date filter | 2044-05-01 preserved in URL and detail link; incident from 06:15 to 06:45, sampled 30 minutes, peak 7°C |
+| Ambiguous chart timestamp | Valid 8°C and ERR at 07:00 omitted together; chart rendered 2 segments and 5 unambiguous points; readout advanced correctly |
+| Deliberate logger move | Explicit 2044-05-02 start, new `Display South` fridge, 2 readings; original fridge retained all 7 unique rows and its incident |
+| Repeat existing-logger upload | Renamed file skipped both readings as cross-import duplicates |
+| Entirely undated upload | Explicit known period accepted ERR evidence; it remained visible under a 2050 date filter |
+| Branch/status URL filters | Selected branch + quality filter returned the fridge with unknown-date evidence, even outside dated history |
+| Structural CSV error | Actionable error, selected file retained, no partial import |
+| Invalid range / missing fridge | 400 and 404 displayed; date controls remained available and All dates recovered the range |
+| Network failure | Error and retry rendered; retry recovered the dashboard |
+| Empty history range | No valid chart points and no unsupported ongoing/current-state claim |
+| Responsive layout | Dashboard, upload and details at 320, 390, 768 and 1280 px; no horizontal overflow, chart present where data exists |
+
+Visually inspected desktop dashboard, mobile fridge history and mobile move form
+screenshots. Checks cover Chromium viewport emulation, not physical Safari/iOS.
+No broad snapshot/end-to-end test suite was added. Large-history pagination and
+downsampling remain outside scope; users can narrow the selected date range.
+
+Issues corrected: details filters previously disappeared on query errors; the
+initial bundle loaded charts on every page; the initially selected test runner had
+an audit advisory. See NOTES.md for the fixes and the jsdom upload-test boundary.
+
+### Task 4 file manifest
+
+Added:
+
+```text
+backend/src/views/history-query.dto.ts
+backend/src/views/views.controller.ts
+backend/src/views/views.module.ts
+backend/src/views/views.service.ts
+backend/test/views.test.ts
+frontend/src/api/client.ts
+frontend/src/api/types.ts
+frontend/src/hooks/useApi.ts
+frontend/src/components/DataQualityList.tsx
+frontend/src/components/DateRangeFilter.tsx
+frontend/src/components/FridgeCard.tsx
+frontend/src/components/IncidentList.tsx
+frontend/src/components/StatusBadge.tsx
+frontend/src/components/TemperatureChart.tsx
+frontend/src/pages/Dashboard.tsx
+frontend/src/pages/Dashboard.test.tsx
+frontend/src/pages/FridgeDetails.tsx
+frontend/src/pages/FridgeDetails.test.tsx
+frontend/src/pages/Upload.tsx
+frontend/src/pages/Upload.test.tsx
+frontend/src/test/setup.ts
+frontend/src/utils/chart-segments.ts
+frontend/src/utils/chart-segments.test.ts
+frontend/src/utils/display.ts
+frontend/vitest.config.ts
+```
+
+Changed: `backend/src/app.module.ts`, `backend/src/imports/import.types.ts`,
+`backend/src/imports/imports.service.ts`, `frontend/src/App.tsx`,
+`frontend/src/App.css`, `frontend/package.json`, `frontend/tsconfig.node.json`,
+root `package.json` / `package-lock.json`, `README.md`, `PLAN.md`, `NOTES.md`,
+and `VERIFICATION.md`. Removed the obsolete `frontend/src/api/health.ts` shell client.
+No Prisma schema, migration, seed, parser or analyzer changes.
