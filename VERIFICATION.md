@@ -4,10 +4,11 @@ This log records checks as they happened. Earlier phase limitations and counts
 describe those versions, not the current application. README.md and NOTES.md
 describe current behavior; later entries document corrections to earlier semantics.
 
-Latest complete code verification (Task 5 Phase 1, commit `8bf3699`): 57/57 backend
+Task 5 Phase 1 code verification (commit `8bf3699`): 57/57 backend
 tests and 10/10 frontend tests passed; root typecheck and both production builds
 passed. The formatting diff was reviewed for semantic changes. The Phase 2
-documentation-only sanity checks and requirement audit appear at the end of this log.
+documentation-only sanity checks and requirement audit appear below. Final submission
+checks are recorded in the Task 5 Phase 3 section at the end.
 
 ## Task 1 verification
 
@@ -290,3 +291,39 @@ Sanity checks on Node 22.16.0/npm 10.9.2:
   edits; the preceding phase's verification is recorded above.
 - Public cloning cannot be tested until publication is authorized and a URL exists.
   README therefore uses an explicitly marked `<repository-url>` placeholder.
+
+## Task 5 Phase 3 — final submission checks
+
+### Before publication
+
+Verified a fresh local clone of `1caf750`, without copied dependencies, environment
+files, build output or databases, on Node 22.16.0/npm 10.9.2:
+
+- `npm ci`: passed; 527 packages installed, 0 audit vulnerabilities reported.
+- `npm run setup`: passed; generated configuration/client, applied both migrations,
+  seeded 4 branches / 5 fridges / 15 readings, and ran the real analyzer.
+- `npm run dev`: started frontend and backend. Backend `/health` and the Vite
+  `/api/health` proxy returned ok/connected; the dashboard loaded the 5 demo fridges.
+- Browser flow passed: dashboard → README sample upload (2 accepted) → updated
+  dashboard (6 fridges) → fridge chart/history. Reupload returned 2 duplicates.
+  Historical URL dates, 390px layout and the seeded sustained incident also passed;
+  no browser exceptions. The browser harness waited for initial Nest compilation.
+- `npm test`: 57/57 backend tests and 10/10 frontend tests passed.
+- `npm run typecheck` and both production builds: passed.
+
+The tracked files and complete commit history were inspected for secret/token/key
+signatures, credential-bearing URLs, personal filesystem paths and local artifacts.
+No such findings were identified. Existing local dependencies, `.env`, SQLite and
+build output are ignored; `.gitignore` also excludes environment variants, logs,
+temporary files and browser test output. `.env.example` remains tracked. Browser
+tooling and verification copies stayed outside the repository. This is a targeted
+repository audit, not a guarantee that automated secret detection is exhaustive.
+
+All checked documentation links/anchors resolve; documentation has no local Windows
+paths. SPEC and approval/verification history remain intact. The earlier time-reporting
+gap is resolved with my explicitly estimated 3–4-hour breakdown in NOTES.md.
+No application source, schema, analysis rules or UI changed during this phase.
+
+Public repository: https://github.com/dvirhp/squanchy-fridge-monitor
+README now uses its real HTTPS clone URL. Existing task commits are preserved without
+squashing. No application deployment is part of this submission.

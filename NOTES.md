@@ -65,8 +65,9 @@ With one more hour, I would prioritize a real-phone/keyboard/screen-reader revie
 of upload errors and chart readouts, then test one genuine export from each available
 logger model. These are proposed next steps, not completed work.
 
-I have not configured a public GitHub remote or published the repository yet,
-so I cannot provide a public clone URL at this point. The local application needs no account.
+I preserved the complete development history in the
+[public repository](https://github.com/dvirhp/squanchy-fridge-monitor).
+The application runs locally and needs no account; it has not been deployed.
 
 ## AI usage
 

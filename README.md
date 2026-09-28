@@ -12,10 +12,10 @@ Prerequisites: Git, **Node.js 22.16+ within Node 22**, and **npm 10+**.
 Internet is needed for dependency/Prisma-engine installation; no account, database
 server, Docker, or paid service is required to run the app.
 
-Replace `<repository-url>` with the actual clone URL, then run:
+Clone the public repository, then run:
 
 ```bash
-git clone <repository-url> squanchy-fridge-monitor
+git clone https://github.com/dvirhp/squanchy-fridge-monitor.git squanchy-fridge-monitor
 cd squanchy-fridge-monitor
 npm ci
 npm run setup
