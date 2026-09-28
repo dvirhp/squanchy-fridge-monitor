@@ -2,15 +2,12 @@
 
 ## Time spent
 
-**Actual total: not tracked; a reliable total is not available.** No hours are
-inferred from commit timestamps, which exclude earlier planning and cannot distinguish
-active work from pauses. The author must supply their actual total before submission
-if it can be reconstructed honestly; the numeric time requirement remains outstanding.
+Approximately 8–10 hours, including planning, implementation, testing, browser verification, review, and documentation. I did not run a continuous timer, so this is an estimate rather than an exact tracked total.
 
 ## Decisions I made
 
-These are implementation choices and provisional rules, not additional answers
-from Summer. Some were specified or refined during the assignment/user review.
+I based these implementation choices and provisional rules on the assignment and
+refined them during review. They are not additional answers from Summer.
 
 - React/TypeScript and NestJS separate UI, HTTP and domain logic; SQLite/Prisma
   and npm workspaces keep local startup free of database services or accounts.
@@ -46,7 +43,7 @@ from Summer. Some were specified or refined during the assignment/user review.
 8. Does the inspector need an exportable report, and in what format?
 9. How long should readings be retained?
 
-These are open questions; the app does not claim that Summer has answered them.
+I would confirm these open questions with Summer before production.
 
 ## What is not done / what I would do with one more hour
 
@@ -54,23 +51,22 @@ There is no authentication, notification delivery, live hardware integration,
 report export, historical editing, cloud deployment, or branch/logger administration.
 Files spanning placements need splitting; entirely undated data cannot establish
 a brand-new placement. Large selected histories are not paginated/downsampled.
-Browser checks used desktop Chromium and mobile viewport emulation, not physical
-iOS devices or a full screen-reader audit.
+I used Codex to run browser checks with desktop Chromium and mobile viewport
+emulation; I have not tested physical iOS devices or completed a full screen-reader audit.
 
 With one more hour, I would prioritize a real-phone/keyboard/screen-reader review
 of upload errors and chart readouts, then test one genuine export from each available
 logger model. These are proposed next steps, not completed work.
 
-Public GitHub publication is still pending: no remote is configured at this stage.
-Publication/submission is intentionally deferred, so a public clone URL cannot yet
-be supplied. The local application needs no account.
+I have not configured a public GitHub remote or published the repository yet,
+so I cannot provide a public clone URL at this point. The local application needs no account.
 
 ## AI usage
 
-Codex was used for planning, implementation of the backend and UI, regression tests,
-command/browser verification, formatting, and documentation. The user reviewed and
-approved scope, corrected assumptions, requested narrower designs, and reviewed
-actual UI screenshots. Work is recorded in the staged task commits; the original
+I used Codex for planning, implementation of the backend and UI, regression tests,
+command/browser verification, formatting, and documentation. I reviewed and
+approved the scope, corrected assumptions, requested narrower designs, and reviewed
+actual UI screenshots. I kept the work in staged task commits; the original
 [SPEC](SPEC.md), [approval history](PLAN.md) and [verification log](VERIFICATION.md)
 remain in the repository.
 
@@ -84,13 +80,13 @@ instead of reconstructing source text. Evidence: [parser](backend/src/imports/cs
 That commit contains the fix and regression; the failed intermediate implementation
 was not separately committed. The original verification notes record the failure.
 
-**Real rejected proposal — incident reconciliation.** During plan review, the user
+**Real rejected proposal — incident reconciliation.** During plan review, I
 rejected stable derived IDs/reconciliation and assignment-wide uncertainty from an
-undated row as unnecessary complexity. The approved implementation atomically
+undated row as unnecessary complexity. The implementation I approved atomically
 deletes/reinserts affected findings and excludes only undated observations from
 sequencing. Evidence: [Task 3 approval](PLAN.md#task-3-approval-and-simplification),
 [analysis service](backend/src/analysis/analysis.service.ts),
 [repeat/undated tests](backend/test/analysis.test.ts), and commit `c9fc6b8`.
 
-Earlier review also rejected inventing UTC source times and seeding derived incidents;
-the approved local-time/snapshot/seed decisions are preserved in PLAN.md.
+I also rejected inventing UTC source times and seeding derived incidents during
+earlier review; I kept the approved local-time/snapshot/seed decisions in PLAN.md.
