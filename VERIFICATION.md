@@ -224,3 +224,20 @@ Changed: `backend/src/app.module.ts`, `backend/src/imports/import.types.ts`,
 root `package.json` / `package-lock.json`, `README.md`, `PLAN.md`, `NOTES.md`,
 and `VERIFICATION.md`. Removed the obsolete `frontend/src/api/health.ts` shell client.
 No Prisma schema, migration, seed, parser or analyzer changes.
+
+### Task 4 follow-up — undated evidence under dashboard date filters
+
+Corrected the earlier dashboard semantics: with either date bound present,
+undated findings remain in `undatedCount` but do not affect period quality counts,
+primary status, the quality summary or quality status filtering. Without date
+bounds, accumulated-history counting is unchanged. Fridge details still show
+unknown-date evidence for every range. The existing card label now says
+"Unknown-date evidence: N" to distinguish it from period findings; no design change.
+
+Verification: `npx tsx --test test/views.test.ts` (backend working directory)
+passed 4/4; frontend tests passed 10/10; root typecheck and both builds passed.
+Regressions cover from-only/to-only/bounded ranges, clear and no-data states,
+quality filtering and summary counts, separately preserved evidence, unchanged
+detail evidence, and dated findings continuing to count. This supersedes the
+original browser-verification row where unknown-date evidence alone matched the
+quality filter outside dated history. No new browser-verification claim is made.

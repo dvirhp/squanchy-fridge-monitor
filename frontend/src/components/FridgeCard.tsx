@@ -9,6 +9,6 @@ export default function FridgeCard({ fridge, query }: { fridge: FridgeSummary; q
     <p className="reading">{fridge.latestReading ? temperature(fridge.latestReading.temperatureCelsius) : '—'}</p>
     <p className="muted">Latest valid reading in range<br />{fridge.latestReading ? dateTime(fridge.latestReading.recordedAt) : 'No valid readings'}</p>
     <div className="card-footer"><span>{fridge.temperatureCount} temperature · {fridge.qualityCount} data-quality findings</span>
-      {fridge.undatedCount > 0 && <small>{fridge.undatedCount} with unknown date</small>}</div>
+      {fridge.undatedCount > 0 && <small>Unknown-date evidence: {fridge.undatedCount}</small>}</div>
   </article>;
 }

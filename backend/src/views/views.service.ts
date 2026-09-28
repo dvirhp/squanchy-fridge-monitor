@@ -26,6 +26,7 @@ export class ViewsService {
 
   async dashboard(query: HistoryQueryDto) {
     const bounds = dateBounds(query);
+    const periodSelected = Boolean(bounds.from || bounds.to);
     const fridges = await this.prisma.fridge.findMany({ where: query.branchId ? { branchId: query.branchId } : {},
       include: { branch: true, incidents: true,
         readings: { where: { status: 'VALID', recordedAt: { not: null, gte: bounds.from, lte: bounds.to } }, orderBy: { recordedAt: 'desc' }, take: 1 },
@@ -33,7 +34,8 @@ export class ViewsService {
     const rows = fridges.map(fridge => {
       const findings = fridge.incidents.filter(finding => overlaps(finding, bounds));
       const temperatureCount = findings.filter(f => f.type === 'TEMPERATURE').length;
-      const qualityCount = findings.filter(f => f.type !== 'TEMPERATURE').length;
+      // Unknown-date evidence cannot establish a problem inside a selected period.
+      const qualityCount = findings.filter(f => f.type !== 'TEMPERATURE' && (!periodSelected || f.startedAt !== null)).length;
       const undatedCount = findings.filter(f => f.startedAt === null).length;
       const latest = fridge.readings[0];
       const status = temperatureCount ? 'temperature' : qualityCount ? 'quality' : latest ? 'clear' : 'no-data';

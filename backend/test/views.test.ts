@@ -56,3 +56,31 @@ test('rejects impossible/reversed dates and unknown fridge IDs', async () => {
   assert.throws(() => dateBounds({ from: '2040-02-02', to: '2040-02-01' }), /Start date/);
   await assert.rejects(views.fridge('missing', {}), /Fridge not found/);
 });
+
+test('undated evidence stays visible but only contributes to quality status and counts without a date range', async () => {
+  const context = { branch: 'Unknown date bakery', fridge: 'Counter', loggerExternalId: 'VIEW-UNDATED',
+    temperatureUnit: 'CELSIUS' as const, assignmentValidFrom: '2042-01-01 00:00' };
+  const imported = await imports.importCsv(csv('2042-01-02 06:00,4\nbad-date,ERR'), 'unknown.csv', context);
+  const branchId = (await views.fridge(imported.fridgeId, {})).branch.id;
+  const all = await views.dashboard({ branchId, status: 'quality' });
+  assert.equal(all.fridges.length, 1);
+  assert.equal(all.fridges[0].qualityCount, 1); assert.equal(all.fridges[0].undatedCount, 1);
+  assert.equal(all.fridges[0].status, 'quality'); assert.equal(all.counts.quality, 1);
+
+  for (const range of [{ from: '2042-01-02' }, { to: '2042-01-02' }, { from: '2042-01-02', to: '2042-01-02' }]) {
+    const result = await views.dashboard({ branchId, ...range });
+    assert.equal(result.fridges[0].qualityCount, 0); assert.equal(result.fridges[0].undatedCount, 1);
+    assert.equal(result.fridges[0].status, 'clear'); assert.equal(result.counts.quality, 0); assert.equal(result.counts.clear, 1);
+    assert.equal((await views.dashboard({ branchId, ...range, status: 'quality' })).fridges.length, 0);
+    assert.equal((await views.fridge(imported.fridgeId, range)).undatedQuality.length, 1);
+  }
+  const emptyPeriod = await views.dashboard({ branchId, from: '2050-01-01' });
+  assert.equal(emptyPeriod.fridges[0].status, 'no-data'); assert.equal(emptyPeriod.fridges[0].undatedCount, 1);
+  assert.equal(emptyPeriod.counts.quality, 0); assert.equal(emptyPeriod.counts.noData, 1);
+
+  await imports.importCsv(csv('2042-01-02 06:15,ERR'), 'dated.csv', context);
+  const dated = await views.dashboard({ branchId, from: '2042-01-02', to: '2042-01-02', status: 'quality' });
+  assert.equal(dated.fridges.length, 1); assert.equal(dated.fridges[0].qualityCount, 1);
+  assert.equal(dated.fridges[0].undatedCount, 1); assert.equal(dated.fridges[0].status, 'quality'); assert.equal(dated.counts.quality, 1);
+  assert.equal((await views.dashboard({ branchId })).fridges[0].qualityCount, 2);
+});

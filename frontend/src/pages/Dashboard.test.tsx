@@ -3,8 +3,18 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import Dashboard from './Dashboard';
+import FridgeCard from '../components/FridgeCard';
 afterEach(() => vi.unstubAllGlobals());
 function Location() { return <output data-testid="url">{useLocation().search}</output>; }
+it('shows unknown-date evidence separately without a period-specific quality badge', () => {
+  render(<MemoryRouter><FridgeCard query="from=2040-01-01" fridge={{ id: 'f', name: 'Cabinet', branch: { id: 'b', name: 'Branch' },
+    status: 'clear', temperatureCount: 0, qualityCount: 0, undatedCount: 1,
+    latestReading: { recordedAt: '2040-01-01T06:00:00', temperatureCelsius: 4 }, latestUploadedAt: null }} /></MemoryRouter>);
+  expect(screen.getByText('Unknown-date evidence: 1')).toBeTruthy();
+  expect(screen.getByText('No detected issue')).toBeTruthy();
+  expect(screen.queryByText('Data-quality issue')).toBeNull();
+  expect(screen.getByText('0 temperature · 0 data-quality findings')).toBeTruthy();
+});
 it('preserves URL dates when changing status and links to historical fridge details', async () => {
   const fetcher = vi.fn(async (path: string) => ({ ok: true, json: async () => path.includes('import-options') ? { branches: [], loggers: [] } : {
     counts: { total: 1, temperature: 1, quality: 1, clear: 0, noData: 0 }, fridges: [{ id: 'f', name: 'Cabinet', branch: { id: 'b', name: 'Branch' },

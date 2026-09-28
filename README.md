@@ -325,6 +325,11 @@ the selected range. Open/interrupted findings end their queryable observed range
 at `details.lastObservedHighAt`; they do not extend to today. Unknown-date invalid
 evidence stays separately visible under every date filter.
 
+With either date bound selected, undated findings contribute only to `undatedCount`,
+not period-specific `qualityCount`, primary status, quality summary count or quality
+status filtering. With no date bounds, quality counts include all accumulated
+evidence as before. Fridge details always retain the separate Date unknown list.
+
 Counts apply after dates/branch, before status. Temperature and quality counts may
 overlap. Temperature findings take sorting priority, followed by quality, no
 detected issue, and no data. The quality filter includes fridges that also have
