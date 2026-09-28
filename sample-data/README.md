@@ -31,6 +31,38 @@ for Ashdod. Date-unknown evidence stays visible in fridge details but cannot mak
 selected period a dashboard data-quality problem. Durations are sampling-based;
 the warming sample has no observed recovery, so no complete duration can be stated.
 
+## Manual acceptance walkthrough
+
+These files represent browser-based black-box acceptance scenarios. Sample A keeps
+the exact mixed Celsius readings used in the unseen-file test; B and D are small
+representative extensions. C reuses an existing export rather than duplicating it.
+Use **15-minute** intervals throughout and branch **Reviewer Acceptance Bakery**
+(create it once, then select it). The names below avoid the earlier demo contexts.
+Counts assume a first upload into each suggested new logger/fridge.
+
+| Sample / filename | Unit | Logger / fridge | Placement / reuse | Expected import: accepted / invalid / duplicate; findings |
+| --- | --- | --- | --- | --- |
+| A: `acceptance-mixed-celsius.csv` | Celsius | REVIEW-MIXED-2027 / Mixed history | New logger/fridge; start **2027-03-08 00:00** | **11 / 1 / 1**; 1 recovered incident (07:00–07:45, 45 sampled minutes, peak 6.8°C), 1 ERR at 08:00, 1 gap 08:15–09:15 |
+| B: `acceptance-legacy-fahrenheit.csv` | **Fahrenheit**, selected explicitly | REVIEW-LEGACY-2027 / Legacy history | New logger/fridge; start **2027-03-08 00:00** | **5 / 1 / 0**; 1 interrupted incident (first high 06:15, last high 06:30, peak 7°C, duration unknown), ERR at 06:45; no gap |
+| C: `invalid-duplicates-gap.csv` | Celsius | REVIEW-MESSY-2026 / Messy history | New logger/fridge; start **2026-09-14 00:00** | **2 / 2 / 1**; healthy valid temperatures, no temperature incident, 1 gap, ERR and unknown-date evidence |
+| D: `acceptance-follow-up-week.csv` | Existing Celsius setting | **Same REVIEW-MIXED-2027 / Mixed history as A** | Upload **after A**; select **Use the recorded location history**; do not enter a new start or move | **4 / 0 / 0**; accumulated history now has **2** recovered incidents, **2** gaps and the original ERR |
+
+For A, exactly 5.0°C is on the threshold; the isolated 8.8°C point is visible in
+the chart but is not a sustained incident. B uses reversed `Temp,DateTime` columns
+and DD/MM/YYYY dates: 41°F converts to exactly 5°C. ERR interrupts the high run;
+the later 39.2°F / 4°C reading does not establish its recovery time. C demonstrates
+unsorted rows, a duplicate, an invalid date and a large gap without another file.
+
+For D, keep the **same logger, branch and fridge** and **Use the recorded location
+history**. The new incident is 2027-03-15 06:15–06:45, 30 sampled minutes, peak 6.4°C.
+Both weeks remain visible with **All dates**; filter March 8 or March 15 to inspect
+each. These are short extracts: the unobserved interval from March 8 at 09:30 to
+March 15 at 06:00 also becomes a gap. No temperatures are invented between files.
+
+Repeating A/B/C/D returns respectively **13/6/5/4 duplicates**, zero new accepted or
+invalid rows, and unchanged logical findings. Use **View fridge history** after each
+upload to inspect chart breaks, sampled incident bounds and separate quality evidence.
+
 ## Demonstrate a deliberate logger move
 
 Reuse existing files rather than inventing a combined location spreadsheet:

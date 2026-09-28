@@ -266,7 +266,7 @@ export default function Upload() {
                 <>
                   <label>
                     Logger started here
-                    <input name="start" type="datetime-local" required step="1" />
+                    <input name="start" type="datetime-local" required step="60" />
                   </label>
                   <p className="small muted">
                     Use the branch’s local date and time, at or before the first reading in this

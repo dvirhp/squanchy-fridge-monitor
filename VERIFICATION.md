@@ -487,3 +487,37 @@ Remaining limitations are the documented provisional unit/threshold/interval rul
 no physical-device/full screen-reader verification, no pagination/downsampling for
 large accumulated histories, and files spanning placements requiring splitting.
 No new features, architectural changes or deployment were introduced.
+
+## Final polish — minute input and reviewer acceptance samples
+
+The logger-start datetime input now uses minute precision (`step="60"`). Its
+required field, backend validation, branch-local normalization and storage remain
+unchanged. Browser inspection confirmed no seconds field. A new placement at
+05:44 and a move at 06:59 stored local `:00` seconds; the original fridge retained
+four readings and the destination received two.
+
+The acceptance CSVs represent manual browser-based black-box scenarios, not new
+automated fixture coverage. `acceptance-mixed-celsius.csv` preserves the exact
+previous unseen-file scenario; the Fahrenheit and follow-up files are representative
+extensions, and the existing messy export is reused. The reviewer walkthrough was
+verified through the real upload UI using temporary browser tooling:
+
+| Sample | Accepted / invalid / duplicate | Observed findings |
+| --- | --- | --- |
+| Mixed Celsius | 11 / 1 / 1 | 1 recovered incident (45 minutes, peak 6.8°C), 1 gap, 1 ERR |
+| Legacy Fahrenheit | 5 / 1 / 0 | Exactly 5°C from 41°F; 1 interrupted incident (peak 7°C, unknown duration), 1 ERR |
+| Existing messy export | 2 / 2 / 1 | No temperature incident; 1 gap, 2 invalid findings including unknown date |
+| Follow-up week, same placement as mixed Celsius | 4 / 0 / 0 | Accumulated 2 recovered incidents, 2 gaps, 1 ERR; original reading IDs/values retained |
+
+Follow-up history showed 15 usable chart points across both weeks and 4 when
+filtered to March 15. Repeats returned 13/6/5/4 duplicates respectively, with no
+new accepted/invalid rows. No browser exceptions. An ambiguous date-control selector
+in the temporary verification script was narrowed to the exact label; no application
+change was needed for verification.
+
+Automated checks: 57/57 backend tests and 10/10 frontend tests passed, including the
+existing upload test with its minute-step assertion. Root typecheck and both
+production builds passed in the separate verification checkout, keeping the local
+review servers running. `git diff --check` passed. Only source/test/documentation
+and three small CSVs were added/changed; no database, generated output, screenshot,
+temporary tooling, dependency or personal path was added. No analysis rule changed.

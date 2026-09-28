@@ -52,6 +52,7 @@ it('requires explicit new logger context, retains fields on error, and submits a
   expect((screen.getByLabelText('File temperature unit') as HTMLSelectElement).required).toBe(true);
   expect((screen.getByLabelText('File temperature unit') as HTMLSelectElement).value).toBe('');
   expect(screen.getByLabelText('Logger started here')).toBeTruthy();
+  expect((screen.getByLabelText('Logger started here') as HTMLInputElement).step).toBe('60');
   await userEvent.selectOptions(screen.getByLabelText('Logger'), 'l');
   await userEvent.selectOptions(screen.getByLabelText('Branch'), 'b');
   await userEvent.selectOptions(screen.getByLabelText('Fridge'), 'f');
