@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TemperatureUnit {
+  CELSIUS
+  FAHRENHEIT
+}
+
+enum ReadingStatus {
+  VALID
+  INVALID
+}
+
+enum IncidentType {
+  TEMPERATURE
+  DATA_GAP
+  INVALID_READING
+}
+
+model Branch {
+  id             String   @id @default(cuid())
+  name           String
+  normalizedName String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  fridges        Fridge[]
+}
+
+model Fridge {
+  id             String   @id @default(cuid())
+  branchId       String
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  branch         Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  assignments    LoggerAssignment[]
+  imports        Import[]
+  readings       Reading[]
+  incidents      Incident[]
+
+  @@unique([branchId, normalizedName])
+}
+
+model Logger {
+  id                      String   @id @default(cuid())
+  externalId              String   @unique
+  temperatureUnit         TemperatureUnit @default(CELSIUS)
+  expectedIntervalMinutes Int      @default(15)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  assignments             LoggerAssignment[]
+  imports                 Import[]
+  readings                Reading[]
+  incidents               Incident[]
+}
+
+model LoggerAssignment {
+  id        String   @id @default(cuid())
+  loggerId  String
+  fridgeId  String
+  /// Branch-local YYYY-MM-DDTHH:mm:ss, with no offset or timezone conversion.
+  validFrom String
+  validTo   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  logger    Logger   @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fridge    Fridge   @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  imports   Import[]
+
+  @@index([loggerId, validFrom])
+  @@index([fridgeId, validFrom])
+}
+
+model Import {
+  id                     String   @id @default(cuid())
+  assignmentId           String
+  /// Authoritative historical context, never resolved from the current assignment.
+  loggerId               String
+  fridgeId               String
+  temperatureUnit        TemperatureUnit
+  expectedIntervalMinutes Int     @default(15)
+  originalFilename       String
+  importedAt             DateTime @default(now())
+  totalRows              Int      @default(0)
+  acceptedRows           Int      @default(0)
+  invalidRows            Int      @default(0)
+  duplicateRows          Int      @default(0)
+  assignment             LoggerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  logger                 Logger   @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fridge                 Fridge   @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  readings               Reading[]
+
+  // Composite FK below keeps reading context identical to its import snapshot.
+  @@unique([id, loggerId, fridgeId])
+  @@index([assignmentId])
+  @@index([fridgeId, importedAt])
+  @@index([loggerId, importedAt])
+}
+
+model Reading {
+  id                 String   @id @default(cuid())
+  importId           String
+  loggerId           String
+  fridgeId           String
+  /// Branch-local YYYY-MM-DDTHH:mm:ss; null when the source time is invalid.
+  recordedAt         String?
+  temperatureCelsius Float?
+  rawTimestamp       String
+  rawTemperature     String
+  sourceRowNumber    Int
+  status             ReadingStatus
+  validationError    String?
+  deduplicationKey   String   @unique
+  createdAt          DateTime @default(now())
+  import             Import   @relation(fields: [importId, loggerId, fridgeId], references: [id, loggerId, fridgeId], onDelete: Restrict, onUpdate: Restrict)
+  logger             Logger   @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fridge             Fridge   @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([importId, loggerId, fridgeId])
+  @@index([fridgeId, recordedAt])
+  @@index([loggerId, recordedAt])
+}
+
+model Incident {
+  id                     String       @id @default(cuid())
+  fridgeId               String
+  loggerId               String?
+  type                   IncidentType
+  /// Branch-local event times, using the same representation as Reading.
+  startedAt              String
+  endedAt                String?
+  durationMinutes        Float?
+  peakTemperatureCelsius Float?
+  details                Json?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  fridge                 Fridge       @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  logger                 Logger?      @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([fridgeId, startedAt])
+  @@index([loggerId, startedAt])
+}
