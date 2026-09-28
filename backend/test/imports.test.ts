@@ -152,7 +152,8 @@ test('seed readings and imported readings share canonical identity including Fah
     fridge: 'Dairy',
     loggerExternalId: 'TL-0231',
   });
-  assert.deepEqual([result.acceptedRows, result.duplicateRows], [0, 2]);
+  assert.deepEqual([result.acceptedRows, result.invalidRows, result.duplicateRows], [0, 1, 2]);
+  assert.equal(result.analysis.invalidReadings, 1);
 });
 
 test('structural failure creates no entities, assignments, imports or readings', async () => {

@@ -50,6 +50,7 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
             />
             <YAxis
               unit="°"
+              tickFormatter={(value: number) => String(Number(value.toFixed(2)))}
               domain={[
                 (min: number) => Math.min(min - 1, 4),
                 (max: number) => Math.max(max + 1, 6),

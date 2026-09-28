@@ -8,7 +8,7 @@ Task 5 Phase 1 code verification (commit `8bf3699`): 57/57 backend
 tests and 10/10 frontend tests passed; root typecheck and both production builds
 passed. The formatting diff was reviewed for semantic changes. The Phase 2
 documentation-only sanity checks and requirement audit appear below. Final submission
-checks are recorded in the Task 5 Phase 3 section at the end.
+checks are recorded in the Task 5 Phase 3 and final requirements audit sections below.
 
 ## Task 1 verification
 
@@ -356,3 +356,134 @@ These checks used only the public repository for application files and fixtures.
 External browser automation was verification tooling, not a runtime requirement.
 No application correction was necessary. The subsequent documentation-only commit
 records these results; it does not change the tested application.
+
+## Final requirements and quality audit
+
+Inspected the actual source, Prisma schema/migrations/seed, all test files, sample
+CSVs, configuration/scripts and documentation. SPEC is byte-for-byte identical to
+the original supplied document. This audit follows publication: the existing public
+repository was verified anonymously at `a9c6cd4`; it was not recreated or rewritten.
+The corrections below are a separate local commit, not pushed during this audit.
+
+### Requirement coverage
+
+Paths below are relative to the repository root. PASS means inspected code/tests
+and the verification described here support the requirement; it is not a claim
+of production certification.
+
+| Client signal / requirement | Result | Implementation and evidence |
+| --- | --- | --- |
+| Weekly CSV uploads; only time/temperature in file, context supplied separately | PASS | `frontend/src/pages/Upload.tsx`, `backend/src/imports/import.dto.ts`; all six sample files exercised through upload |
+| All fridges together, problems first | PASS | `backend/src/views/views.service.ts`, `frontend/src/pages/Dashboard.tsx`; seeded 5-fridge and expanded 12-fridge dashboards |
+| Temperature and quality issues distinct; no safety/live claim | PASS | `StatusBadge.tsx`, `FridgeCard.tsx`, `DataQualityList.tsx` in frontend components; separate counts/badges and historical wording |
+| Inspector: when above 5°C and for how long | PASS | `IncidentList.tsx`, temperature analyzer/tests; start, recovery/last high, sampled duration or unknown, peak |
+| Accumulated uploads and late historical evidence | PASS | `analysis.service.ts`, `backend/test/analysis.test.ts`: cross-import runs, late gap filling/recovery, replacement findings |
+| Mobile usability | PASS | `frontend/src/App.css`; all pages checked at 390/360px, no horizontal overflow; desktop at 1280px |
+| Physical-device/full assistive-technology validation | PARTIAL | Chromium emulation and keyboard/readout checks only; physical iOS and full screen-reader audit remain undone |
+| Approximately 3,000 rows | PASS | `backend/test/imports.test.ts` generated 3,000-row import/persistence/analysis test: 806.61 ms on this run, not an SLA |
+| Alternate column order/header aliases | PASS | `column-mapping.ts`, `csv-parser.test.ts`, Fahrenheit/Ashdod CSVs |
+| ISO and DD/MM/YYYY local timestamps | PASS | `reading-normalizer.ts` and tests; Fahrenheit/Ashdod CSVs, timezone-independent browser readouts |
+| Haifa Fahrenheit without value-based guessing | PASS | Explicit logger config, `reading-normalizer.test.ts`; Fahrenheit UI upload yielded 3.5°C and approximately 3.89°C plus retained ERR |
+| Tel Aviv-style logger moves preserve history | PASS | Import snapshots/composite FK, `assignment-resolver.ts`, foundation/import/analysis/views tests; documented two-upload move verified in browser |
+| Exact within-file and cross-import duplicates | PASS | `reading-identity.ts`, unique database key, import tests; repeat every positive CSV retained zero new rows |
+| Out-of-order readings | PASS | Import sorting and grouped chronological analysis; Ashdod and mixed-quality files |
+| ERR and invalid dates retained | PASS | Raw fields/status/reason, `reading-validator.ts`, import tests; mixed-quality UI yielded 2 invalid findings including unknown date |
+| Missing-data gaps, without invented temperatures/causes | PASS | `gap-analyzer.ts` and tests; 06:15–08:30 gap displayed as 135 minutes between observations |
+| Single spike versus sustained/gradual warming | PASS | `temperature-analyzer.test.ts`; celsius CSV produced 1 spike/0 sustained, warming CSV produced 1 ongoing incident |
+| Exactly 5 is not high; >5 is high; recovery closes runs | PASS | `analysis.rules.ts`, `temperature-analyzer.test.ts`, cumulative recovery integration test |
+| Invalid/conflicting timestamp, interval and placement breaks | PASS | `prepareObservations`, analyzer tests, `chart-segments.ts` and tests; valid+ERR timestamp excluded from run and chart |
+| Ongoing/interrupted history is not extrapolated to now | PASS | Analyzer uses no current clock; null duration, finite last-high overlap bound, explicit UI explanation |
+| Historical filtering and complete overlapping incident bounds | PASS | `history-query.dto.ts`, views tests, URL date controls and browser filtering in America/Los_Angeles timezone |
+| Undated evidence: visible but not a selected-period quality count/status | PASS | Views regression tests (from-only/to-only/both/no bounds); mixed-quality evidence remained visible outside dated history in browser |
+| Structural errors atomic; row errors retained; entity rollback | PASS | Imports transaction and rollback tests; missing-column UI error left options/entities unchanged |
+| Branch case normalization and entirely unseen context | PASS | Normalized unique names, imports test; Ashdod / LOGGER-9876 / Display 7 UI upload |
+| No external account, paid service or database service | PASS | SQLite, local setup script and dependency/config inspection; no auth/cloud/queues/reporting framework |
+| README clone/install/setup/run and exact URLs/commands | PASS | Anonymous public clone plus audit changes, fresh install/setup/startup; direct health, Vite proxy and browser dashboard |
+| Public repository; no deployment requirement | PASS | Anonymous clone and GitHub metadata confirmed public/main; no deployment performed |
+| NOTES, real AI evidence and workflow artifacts | PASS | All requested NOTES sections/3–4-hour estimated breakdown; CSV regression and rejected reconciliation evidence inspected; SPEC/PLAN/history retained |
+
+### Corrections and sample inventory
+
+Only genuine demonstration/readability gaps were corrected:
+
+- Added `sample-data/gradual-warming.csv`: the four SPEC readings already existed
+  in the seed, but were missing as an uploadable file.
+- Added one dated ERR row to `sample-data/fahrenheit-reversed.csv`; kept explicit
+  Fahrenheit configuration and updated the existing seeded-duplicate test to
+  assert 0 accepted / 1 invalid / 2 duplicates and one invalid finding.
+- Rewrote `sample-data/README.md` with every file's exact operator context/unit,
+  expected counts, seeded-vs-new differences and two-upload move steps. Reused
+  existing CSVs for the move and healthy example; no redundant large CSV added.
+- Visual review exposed a long floating-point Y-axis tick (`3.59999…`) clipped in
+  the chart. A single tick formatter now displays at most two decimals. Measurement
+  values, chart geometry, thresholds, analysis and design are unchanged.
+
+The complete six-file CSV inventory is: `celsius.csv` (spike),
+`gradual-warming.csv` (sustained), `fahrenheit-reversed.csv` (explicit unit/ERR/
+alternate date/aliases), `invalid-duplicates-gap.csv` (quality/duplicate/gap/
+unsorted), `invented-ashdod.csv` (healthy/unseen/mixed-format/unsorted), and
+`missing-columns.csv` (structural rejection). All positive exports have only
+time/temperature. The negative fixture deliberately lacks temperature.
+
+### Fresh verification results
+
+Used a new anonymous public clone at `a9c6cd4`, with only the audited source/test/
+sample changes applied; no environment, database, dependencies or build output
+were copied. Node 22.16.0/npm 10.9.2 on Windows:
+
+- `npm ci`: 527 packages installed, 530 audited, zero reported vulnerabilities.
+- `npm run setup`: passed; created local configuration/client/database, applied
+  both migrations, seeded 15 readings across 5 fridges/4 branches, ran analysis.
+- `npm run dev`: frontend/backend started; direct `/health` and `/api/health`
+  returned HTTP 200 with ok/connected; dashboard loaded.
+- Real browser flow: dashboard → Ashdod upload (2 accepted) → updated dashboard →
+  fridge chart. All remaining documented fixtures and every positive-file repeat
+  also passed. Sustained warming: first high 06:15, last 06:45, peak 7.1°C, unknown
+  complete duration. Spike: no persisted sustained incident. Fahrenheit: 2 valid,
+  1 invalid. Mixed quality: 2 accepted, 2 invalid, 1 duplicate, 1 gap.
+- Deliberate move: original fridge retained four 2026 readings; destination had
+  two 2031 readings, no inter-placement gap; historical reupload returned four
+  duplicates. Confirmed original period ended at the explicit move timestamp.
+- Branch/status/date URL filters, unknown-date evidence, invalid range recovery,
+  missing-page/missing-fridge states, upload error field retention and simulated
+  network failure/retry passed. Browser timezone America/Los_Angeles did not shift
+  branch-local timestamps. No browser exceptions.
+- All three pages: 1280/390/360px, no horizontal overflow; visible primary buttons,
+  form controls and navigation links met 44px height. Desktop/mobile screenshots
+  visually reviewed. After the axis fix, tick labels were 3.6°, 5.6°, 8.1° at all
+  widths; threshold/line remained intact and keyboard reading navigation passed.
+  The external check initially used an incorrect Recharts DOM selector; inspecting
+  the SVG and selecting its tick-label layer corrected the harness, not the app.
+- `npm test`: 57/57 backend and 10/10 frontend passed, no failures/skips. Frontend
+  tests were also rerun after the tick formatter change: 10/10 passed.
+- `npm run typecheck`: both workspaces passed. `npm run build`: both production
+  builds passed after the axis fix. `npm audit`: zero vulnerabilities.
+
+### Scope, documentation and hygiene
+
+Controllers remain thin; parsing, normalization and pure analysis are separately
+testable. Analysis is deterministic in meaning and transactionally rebuildable;
+derived IDs are intentionally replaceable. Chart code computes continuity only,
+not incidents. Import snapshots, unique identity and composite foreign keys support
+historical attribution. No fixture names/IDs occur in production backend/frontend
+source. Formatting remains readable; no style-only refactor was made.
+
+README/NOTES match current behavior and use the real public URL. NOTES has all six
+required items in first person; its time is explicitly an estimate, not timer data.
+Earlier SPEC/PLAN/verification instructions are labeled historical, not current
+unimplemented-feature claims. Source-row regression and reconciliation evidence
+remain linked. Local Markdown links/anchors resolve; no local Windows paths occur
+in documentation. Useful spec/planning/migration/lockfile artifacts remain intact.
+
+Tracked files and history were checked for targeted secret signatures, credentials,
+personal paths and local artifacts, with none found. Ignored local `.env` contains
+only local SQLite/port settings; dependency/build directories, SQLite and TypeScript
+cache files remain ignored. No unexpected untracked files, browser scripts or
+screenshots were present in the repository. External browser tooling/screenshots
+and the verification checkout stayed outside it. This is a targeted audit, not an
+exhaustive security guarantee. `.gitignore` needed no further change.
+
+Remaining limitations are the documented provisional unit/threshold/interval rules,
+no physical-device/full screen-reader verification, no pagination/downsampling for
+large accumulated histories, and files spanning placements requiring splitting.
+No new features, architectural changes or deployment were introduced.
