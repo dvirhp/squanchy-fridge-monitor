@@ -4,16 +4,30 @@ export function analyzeTemperature(observations: Observation[], assignmentEnded:
   const findings: Finding[] = [];
   const spikes: { recordedAt: string; recoveredAt: string; temperatureCelsius: number }[] = [];
   let run: { start: string; last: string; count: number; peak: number } | null = null;
-  const finish = (state: 'RECOVERED' | 'ONGOING' | 'INTERRUPTED', recovery: string | null = null, reason?: string) => {
-    if (run && run.count >= ANALYSIS_RULES.sustainedReadings) findings.push({
-      type: 'TEMPERATURE', startedAt: run.start, endedAt: recovery,
-      durationMinutes: recovery === null ? null : elapsedMinutes(run.start, recovery),
-      peakTemperatureCelsius: run.peak,
-      details: { state, lastObservedHighAt: run.last, ...(reason ? { interruptionReason: reason } : {}) },
-    });
-    else if (run && state === 'RECOVERED' && recovery) spikes.push({
-      recordedAt: run.start, recoveredAt: recovery, temperatureCelsius: run.peak,
-    });
+  const finish = (
+    state: 'RECOVERED' | 'ONGOING' | 'INTERRUPTED',
+    recovery: string | null = null,
+    reason?: string,
+  ) => {
+    if (run && run.count >= ANALYSIS_RULES.sustainedReadings)
+      findings.push({
+        type: 'TEMPERATURE',
+        startedAt: run.start,
+        endedAt: recovery,
+        durationMinutes: recovery === null ? null : elapsedMinutes(run.start, recovery),
+        peakTemperatureCelsius: run.peak,
+        details: {
+          state,
+          lastObservedHighAt: run.last,
+          ...(reason ? { interruptionReason: reason } : {}),
+        },
+      });
+    else if (run && state === 'RECOVERED' && recovery)
+      spikes.push({
+        recordedAt: run.start,
+        recoveredAt: recovery,
+        temperatureCelsius: run.peak,
+      });
     run = null;
   };
   let previous: Observation | undefined;
@@ -29,9 +43,16 @@ export function analyzeTemperature(observations: Observation[], assignmentEnded:
       finish('INTERRUPTED', null, observation.interruptionReason ?? 'INVALID_READING');
     } else if (observation.temperatureCelsius > ANALYSIS_RULES.highTemperatureCelsius) {
       if (run) {
-        run.last = observation.at; run.count++; run.peak = Math.max(run.peak, observation.temperatureCelsius);
+        run.last = observation.at;
+        run.count++;
+        run.peak = Math.max(run.peak, observation.temperatureCelsius);
       } else {
-        run = { start: observation.at, last: observation.at, count: 1, peak: observation.temperatureCelsius };
+        run = {
+          start: observation.at,
+          last: observation.at,
+          count: 1,
+          peak: observation.temperatureCelsius,
+        };
       }
     } else {
       finish('RECOVERED', observation.at);

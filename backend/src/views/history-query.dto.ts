@@ -8,10 +8,16 @@ export class HistoryQueryDto {
   @IsOptional() @IsString() branchId?: string;
   @IsOptional() @IsIn(['temperature', 'quality', 'clear', 'no-data']) status?: string;
 }
+
 export function dateBounds(query: HistoryQueryDto) {
   for (const date of [query.from, query.to]) {
-    if (date && !normalizeTimestamp(`${date}T00:00:00`)) throw new BadRequestException('Choose a valid calendar date.');
+    if (date && !normalizeTimestamp(`${date}T00:00:00`))
+      throw new BadRequestException('Choose a valid calendar date.');
   }
-  if (query.from && query.to && query.from > query.to) throw new BadRequestException('Start date must be on or before end date.');
-  return { from: query.from ? `${query.from}T00:00:00` : undefined, to: query.to ? `${query.to}T23:59:59` : undefined };
+  if (query.from && query.to && query.from > query.to)
+    throw new BadRequestException('Start date must be on or before end date.');
+  return {
+    from: query.from ? `${query.from}T00:00:00` : undefined,
+    to: query.to ? `${query.to}T23:59:59` : undefined,
+  };
 }

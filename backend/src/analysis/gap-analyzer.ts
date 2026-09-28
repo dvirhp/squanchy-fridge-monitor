@@ -9,12 +9,20 @@ export function analyzeGaps(observations: Observation[]): Finding[] {
     // Historical imports can have different configurations. Use the smaller
     // neighboring snapshot interval conservatively; never the live logger setting.
     const expected = Math.min(previous.expectedIntervalMinutes, next.expectedIntervalMinutes);
-    if (elapsed > ANALYSIS_RULES.gapIntervalMultiplier * expected) findings.push({
-      type: 'DATA_GAP', startedAt: previous.at, endedAt: next.at,
-      durationMinutes: elapsed, peakTemperatureCelsius: null,
-      details: { previousObservationAt: previous.at, nextObservationAt: next.at,
-        elapsedMinutes: elapsed, expectedIntervalMinutes: expected },
-    });
+    if (elapsed > ANALYSIS_RULES.gapIntervalMultiplier * expected)
+      findings.push({
+        type: 'DATA_GAP',
+        startedAt: previous.at,
+        endedAt: next.at,
+        durationMinutes: elapsed,
+        peakTemperatureCelsius: null,
+        details: {
+          previousObservationAt: previous.at,
+          nextObservationAt: next.at,
+          elapsedMinutes: elapsed,
+          expectedIntervalMinutes: expected,
+        },
+      });
   }
   return findings;
 }

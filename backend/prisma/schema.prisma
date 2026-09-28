@@ -33,13 +33,13 @@ model Branch {
 }
 
 model Fridge {
-  id             String   @id @default(cuid())
+  id             String             @id @default(cuid())
   branchId       String
   name           String
   normalizedName String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  branch         Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  branch         Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   assignments    LoggerAssignment[]
   imports        Import[]
   readings       Reading[]
@@ -49,12 +49,12 @@ model Fridge {
 }
 
 model Logger {
-  id                      String   @id @default(cuid())
-  externalId              String   @unique
-  temperatureUnit         TemperatureUnit @default(CELSIUS)
-  expectedIntervalMinutes Int      @default(15)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                      String             @id @default(cuid())
+  externalId              String             @unique
+  temperatureUnit         TemperatureUnit    @default(CELSIUS)
+  expectedIntervalMinutes Int                @default(15)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
   assignments             LoggerAssignment[]
   imports                 Import[]
   readings                Reading[]
@@ -79,23 +79,23 @@ model LoggerAssignment {
 }
 
 model Import {
-  id                     String   @id @default(cuid())
-  assignmentId           String
+  id                      String           @id @default(cuid())
+  assignmentId            String
   /// Authoritative historical context, never resolved from the current assignment.
-  loggerId               String
-  fridgeId               String
-  temperatureUnit        TemperatureUnit
-  expectedIntervalMinutes Int     @default(15)
-  originalFilename       String
-  importedAt             DateTime @default(now())
-  totalRows              Int      @default(0)
-  acceptedRows           Int      @default(0)
-  invalidRows            Int      @default(0)
-  duplicateRows          Int      @default(0)
-  assignment             LoggerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  logger                 Logger   @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  fridge                 Fridge   @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  readings               Reading[]
+  loggerId                String
+  fridgeId                String
+  temperatureUnit         TemperatureUnit
+  expectedIntervalMinutes Int              @default(15)
+  originalFilename        String
+  importedAt              DateTime         @default(now())
+  totalRows               Int              @default(0)
+  acceptedRows            Int              @default(0)
+  invalidRows             Int              @default(0)
+  duplicateRows           Int              @default(0)
+  assignment              LoggerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  logger                  Logger           @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fridge                  Fridge           @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  readings                Reading[]
 
   // Composite FK below keeps reading context identical to its import snapshot.
   @@unique([id, loggerId, fridgeId])
@@ -105,7 +105,7 @@ model Import {
 }
 
 model Reading {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   importId           String
   loggerId           String
   fridgeId           String
@@ -117,11 +117,11 @@ model Reading {
   sourceRowNumber    Int
   status             ReadingStatus
   validationError    String?
-  deduplicationKey   String   @unique
-  createdAt          DateTime @default(now())
-  import             Import   @relation(fields: [importId, loggerId, fridgeId], references: [id, loggerId, fridgeId], onDelete: Restrict, onUpdate: Restrict)
-  logger             Logger   @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  fridge             Fridge   @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  deduplicationKey   String        @unique
+  createdAt          DateTime      @default(now())
+  import             Import        @relation(fields: [importId, loggerId, fridgeId], references: [id, loggerId, fridgeId], onDelete: Restrict, onUpdate: Restrict)
+  logger             Logger        @relation(fields: [loggerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  fridge             Fridge        @relation(fields: [fridgeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([importId, loggerId, fridgeId])
   @@index([fridgeId, recordedAt])

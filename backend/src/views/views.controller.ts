@@ -6,7 +6,19 @@ import { ViewsService } from './views.service';
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
 export class ViewsController {
   constructor(private readonly views: ViewsService) {}
-  @Get('import-options') options() { return this.views.options(); }
-  @Get('dashboard') dashboard(@Query() query: HistoryQueryDto) { return this.views.dashboard(query); }
-  @Get('fridges/:id') fridge(@Param('id') id: string, @Query() query: HistoryQueryDto) { return this.views.fridge(id, query); }
+
+  @Get('import-options')
+  options() {
+    return this.views.options();
+  }
+
+  @Get('dashboard')
+  dashboard(@Query() query: HistoryQueryDto) {
+    return this.views.dashboard(query);
+  }
+
+  @Get('fridges/:id')
+  fridge(@Param('id') id: string, @Query() query: HistoryQueryDto) {
+    return this.views.fridge(id, query);
+  }
 }
