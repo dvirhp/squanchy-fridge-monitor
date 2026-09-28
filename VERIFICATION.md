@@ -327,3 +327,32 @@ No application source, schema, analysis rules or UI changed during this phase.
 Public repository: https://github.com/dvirhp/squanchy-fridge-monitor
 README now uses its real HTTPS clone URL. Existing task commits are preserved without
 squashing. No application deployment is part of this submission.
+
+### After publication — anonymous public clone
+
+Cloned the public HTTPS URL with Git's credential helper disabled into a new
+directory at `ad45bdf`. All 11 existing commits were present. No dependencies,
+configuration, databases or build output were copied from another checkout.
+
+- Followed README commands: `npm ci` installed 527 packages and reported 0 audit
+  vulnerabilities; `npm run setup` generated configuration/client, applied both
+  migrations, seeded the demo readings and ran analysis successfully.
+- `npm run dev` started both services. Direct `/health` and proxied `/api/health`
+  returned HTTP 200 with `status: ok` and `database: connected`; dashboard loaded.
+- Chromium browser verification passed: dashboard → new logger/location upload
+  using the repository's Ashdod sample (2 accepted) → dashboard (6 fridges) → fridge
+  details/chart. Repeat upload returned 2 duplicates. Historical date filtering,
+  the seeded sustained incident and a 390px viewport without horizontal overflow
+  passed. No browser exceptions occurred.
+- Stopped development servers before the remaining checks. `npm test`: 57/57
+  backend and 10/10 frontend tests passed, with no failures. Both workspace
+  typechecks and both production builds passed.
+- The public checkout remained clean after setup, browser verification and builds:
+  generated local files were ignored. The final audit found no targeted secrets,
+  credential-bearing URLs, personal paths or committed local artifacts across
+  the published history; all 13 local Markdown links/anchors resolved.
+
+These checks used only the public repository for application files and fixtures.
+External browser automation was verification tooling, not a runtime requirement.
+No application correction was necessary. The subsequent documentation-only commit
+records these results; it does not change the tested application.
