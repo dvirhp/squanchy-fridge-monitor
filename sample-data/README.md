@@ -25,7 +25,9 @@ The importer reports duplicates within a file and against earlier imports/seeds.
 
 These are representative exports, not actual files supplied by the client.
 The Rishon LeZion / Cream cakes / TL-0388 seed keeps the warming readings from SPEC.
-No incident/spike/gap detection is performed in Task 2.
+Task 3 runs the real historical analyzer after imports and during setup. The spike
+is counted separately, warming yields a temperature incident, and ERR/gaps yield
+data-quality findings. No incident records are manufactured by the seed.
 
 Uploading client-derived CSVs against their seeded context will report duplicates.
 To see new accepted rows, use a new explicit context. For example (PowerShell:

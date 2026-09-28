@@ -9,4 +9,5 @@ export interface ValidatedReading extends NormalizedReading {
 export interface ImportSummary {
   importId: string; assignmentId: string; totalRows: number;
   acceptedRows: number; invalidRows: number; duplicateRows: number;
+  analysis: { fridgeIds: string[]; temperatureIncidents: number; dataGaps: number; invalidReadings: number; temporarySpikes: number };
 }

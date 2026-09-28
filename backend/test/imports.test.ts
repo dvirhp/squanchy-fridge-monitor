@@ -10,11 +10,12 @@ import { validate } from 'class-validator';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ImportsService } from '../src/imports/imports.service';
 import { ImportDto } from '../src/imports/import.dto';
+import { AnalysisService } from '../src/analysis/analysis.service';
 
 const directory = mkdtempSync(join(tmpdir(), 'squanchy-imports-'));
 const url = 'file:' + join(directory, 'test.db').replaceAll('\\', '/');
 const prisma = new PrismaService({ datasources: { db: { url } } });
-const service = new ImportsService(prisma);
+const service = new ImportsService(prisma, new AnalysisService());
 const fixture = (name: string) => readFileSync(join('..', 'sample-data', name));
 const csv = (rows: string) => Buffer.from('Time,Temperature\n' + rows);
 const context: ImportDto = { branch: 'Ashdod', fridge: 'Display 7', loggerExternalId: 'LOGGER-9876',
@@ -163,5 +164,5 @@ test('representative 3000-row weekly import persists every row within one transa
   });
   assert.equal(result.acceptedRows, 3000);
   assert.equal(await prisma.reading.count({ where: { importId: result.importId } }), 3000);
-  assert.equal(await prisma.incident.count(), 0);
+  assert.equal(await prisma.incident.count({ where: { fridge: { normalizedName: 'weekly cabinet' } } }), 0);
 });

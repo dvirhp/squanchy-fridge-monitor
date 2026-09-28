@@ -23,6 +23,7 @@
     "db:prepare": "npm run db:prepare --workspace backend",
     "db:deploy": "npm run db:deploy --workspace backend",
     "db:seed": "npm run db:seed --workspace backend",
+    "db:analyze": "npm run db:analyze --workspace backend",
     "db:studio": "npm run db:studio --workspace backend"
   },
   "overrides": {

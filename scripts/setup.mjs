@@ -9,7 +9,7 @@ try {
 } catch (error) {
   if (error.code !== 'EEXIST') throw error;
 }
-for (const command of ['db:generate', 'db:prepare', 'db:deploy', 'db:seed']) {
+for (const command of ['db:generate', 'db:prepare', 'db:deploy', 'db:seed', 'db:analyze']) {
   const result = spawnSync(process.execPath, [process.env.npm_execpath, 'run', command], { cwd: root, stdio: 'inherit' });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);

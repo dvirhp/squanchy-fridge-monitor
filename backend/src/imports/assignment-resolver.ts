@@ -5,7 +5,9 @@ import type { ImportDto } from './import.dto';
 import type { ValidatedReading } from './import.types';
 
 export async function resolveAssignment(tx: Prisma.TransactionClient, metadata: ImportDto,
-  loggerId: string, fridgeId: string, rows: ValidatedReading[]) {
+  loggerId: string, fridgeId: string, rows: ValidatedReading[]): Promise<{
+    assignment: Prisma.LoggerAssignmentGetPayload<object>; closedAssignmentId?: string;
+  }> {
   const assignments = await tx.loggerAssignment.findMany({ where: { loggerId }, orderBy: { validFrom: 'asc' } });
   const times = rows.flatMap(row => row.recordedAt === null ? [] : [row.recordedAt]).sort();
   const containsAll = (a: { validFrom: string; validTo: string | null }) =>
@@ -21,7 +23,7 @@ export async function resolveAssignment(tx: Prisma.TransactionClient, metadata: 
   if (metadata.assignmentId) {
     const selected = assignments.find(a => a.id === metadata.assignmentId && a.fridgeId === fridgeId);
     if (!selected || !containsAll(selected)) throw new ConflictException('Selected assignment does not match the logger, fridge, or reading times.');
-    return selected;
+    return { assignment: selected };
   }
   if (!times.length) throw new BadRequestException('All timestamps are invalid. Supply an existing assignmentId to establish context.');
   const matching = assignments.filter(a => a.fridgeId === fridgeId && containsAll(a));
@@ -29,7 +31,7 @@ export async function resolveAssignment(tx: Prisma.TransactionClient, metadata: 
     if (metadata.assignmentValidFrom && normalizeTimestamp(metadata.assignmentValidFrom) !== matching[0].validFrom) {
       throw new ConflictException('assignmentValidFrom differs from the existing matching assignment.');
     }
-    return matching[0];
+    return { assignment: matching[0] };
   }
   if (!metadata.assignmentValidFrom) {
     throw new ConflictException('No assignment covers this file. Supply an explicit assignmentValidFrom for a first assignment or forward move; split files spanning assignments.');
@@ -47,5 +49,6 @@ export async function resolveAssignment(tx: Prisma.TransactionClient, metadata: 
     if (conflict) throw new ConflictException('Move would contradict existing readings, including readings whose times are unknown.');
     await tx.loggerAssignment.update({ where: { id: latest.id }, data: { validTo: start } });
   }
-  return tx.loggerAssignment.create({ data: { loggerId, fridgeId, validFrom: start } });
+  const assignment = await tx.loggerAssignment.create({ data: { loggerId, fridgeId, validFrom: start } });
+  return { assignment, closedAssignmentId: latest?.validTo === null ? latest.id : undefined };
 }

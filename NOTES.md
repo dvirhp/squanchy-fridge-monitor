@@ -20,10 +20,10 @@
   Updating an assignment cannot rewrite those snapshots through cascading FKs.
 - Haifa's Fahrenheit configuration is provisional, because the client did not
   explicitly identify its unit.
-- Planned analysis uses >5°C and two consecutive valid high readings, avoiding
+- Analysis uses >5°C and two consecutive valid high readings, avoiding
   classifying a recovered single spike as a sustained problem.
-- A provisional gap rule of >30 minutes against a 15-minute expected interval
-  avoids treating every small delay as missing data. Analysis is deferred.
+- The provisional gap rule is >2 times the historical expected interval
+  (>30 minutes for 15-minute sampling). Temperature continuity is stricter.
 - A unique reading identity key supports future exact-duplicate rejection.
   ERR remains raw invalid data with null Celsius, rather than being lost or zeroed.
 - Seed readings are illustrative and explicitly normalized by hand. No derived
@@ -46,9 +46,9 @@
 
 ## What is not done / what I would do with one more hour
 
-Task 2 adds backend CSV import, normalization, validation, and deduplication.
-Incident analysis, dashboard, charts, final upload UI, and analyzer business-rule
-tests await later tasks. There is no public GitHub remote yet.
+Task 3 adds historical incident/data-quality analysis and focused tests.
+Dashboard, charts, and final upload UI await later tasks. There is no public
+GitHub remote yet.
 Revisit this section honestly near submission, after the requested core tasks.
 
 ## AI usage
@@ -102,3 +102,30 @@ following that sequence successfully started both applications.
   lines and quoted CRLF fields. I replaced it with byte-boundary tracking against
   the original decoded CSV. Evidence: csv-parser.ts and the multiline/blank-line
   regression test in csv-parser.test.ts.
+
+## Task 3 decisions and actual corrections
+
+- High means strictly >5°C; two distinct consecutive valid high observations
+  establish an incident. A single high followed by continuous recovery is a
+  temporary spike, with no assumed cause. A final isolated high is unconfirmed.
+- Continuity allows at most one expected interval; gaps require more than two.
+  Rules use historical Import snapshots. Interval changes interrupt continuity;
+  gap detection uses the smaller neighboring interval conservatively.
+- Recovered duration is recovery minus first high in local calendar minutes,
+  a sampling-based estimate. ONGOING/INTERRUPTED end and duration remain null.
+  Ongoing means no recovery observed, not live-health confirmation.
+- Dated invalid readings, conflicts, missing observations, and assignment endings
+  interrupt runs. Undated invalid readings are separate unlocated evidence and
+  do not suppress supported dated analysis. No timezone or DST is assumed.
+- Accumulated histories are partitioned by historical fridge/logger/assignment.
+  Synchronous analysis replaces affected fridges' findings in the import transaction.
+  Repeats preserve logical content/counts; generated IDs may change.
+- Incident.startedAt is nullable for undated evidence. No other schema expansion
+  or incident type was added. Details stay small; spikes are not persisted incidents.
+- Real rejected AI proposals: the initial plan included stable finding IDs with
+  reconciliation and assignment-wide uncertainty from an undated reading. The
+  user rejected both during review. Implementation instead deletes/reinserts
+  findings and excludes only the undated observation from sequencing. Evidence:
+  PLAN.md, analysis.service.ts, and repeat/undated tests in analysis.test.ts.
+- Preserve Task 4's historical dashboard with date/branch/status filters, problem
+  prioritization, and date-range Fridge Details. No UI was added in Task 3.

@@ -8,10 +8,11 @@ import { readingIdentity } from './reading-identity';
 import { resolveAssignment } from './assignment-resolver';
 import type { ImportDto } from './import.dto';
 import type { ImportSummary } from './import.types';
+import { AnalysisService } from '../analysis/analysis.service';
 
 @Injectable()
 export class ImportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly analysis: AnalysisService) {}
 
   async importCsv(bytes: Buffer, filename: string, metadata: ImportDto): Promise<ImportSummary> {
     let rawRows;
@@ -37,7 +38,7 @@ export class ImportsService {
         });
         const rows = rawRows.map(row => validateReading(normalizeReading(row, logger.temperatureUnit)))
           .sort((a, b) => (a.recordedAt ?? '\uffff').localeCompare(b.recordedAt ?? '\uffff') || a.sourceRowNumber - b.sourceRowNumber);
-        const assignment = await resolveAssignment(tx, metadata, logger.id, fridge.id, rows);
+        const { assignment, closedAssignmentId } = await resolveAssignment(tx, metadata, logger.id, fridge.id, rows);
         const context = { loggerId: logger.id, fridgeId: fridge.id, temperatureUnit: logger.temperatureUnit };
         const keyed = rows.map(row => ({ ...row, deduplicationKey: readingIdentity(row, context) }));
         const existing = new Map<string, string>();
@@ -70,7 +71,11 @@ export class ImportsService {
             ...row, importId: imported.id, loggerId: logger.id, fridgeId: fridge.id,
           })) });
         }
-        return { importId: imported.id, assignmentId: assignment.id, totalRows: rows.length, acceptedRows, invalidRows, duplicateRows };
+        const previousContexts = closedAssignmentId
+          ? await tx.import.findMany({ where: { assignmentId: closedAssignmentId }, select: { fridgeId: true }, distinct: ['fridgeId'] })
+          : [];
+        const analysis = await this.analysis.recomputeFridges(tx, [fridge.id, ...previousContexts.map(context => context.fridgeId)]);
+        return { importId: imported.id, assignmentId: assignment.id, totalRows: rows.length, acceptedRows, invalidRows, duplicateRows, analysis };
       }, { maxWait: 5000, timeout: 20000 });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002', 'P2034'].includes(error.code)) {

@@ -81,3 +81,55 @@ CRLF counting mistakes; byte offsets against the original decoded text now
 preserve correct starting physical line numbers. These regressions pass.
 
 No analyzer, dashboard, chart, or upload UI behavior was added or tested.
+
+## Task 3 verification
+
+Verified on Windows with Node 22.16.0 / npm 10.9.2 on 2026-09-28.
+
+- `npm test`: **52/52 passed**, including all prior parser/import/foundation
+  checks plus temperature, gap, and historical analysis integration tests.
+- `npm run typecheck`: passed for both workspaces, Prisma scripts, and tests.
+- `npm run build`: frontend and backend passed.
+- Fresh root `npm run setup` using a new isolated SQLite file: passed.
+  Both migrations applied, 15 seed readings loaded, and the real analyzer derived
+  one temperature incident, one gap, one invalid-reading finding, and one spike
+  summary. Seed code still inserts no incidents.
+- The existing 3,000-row import test now also runs synchronous analysis in the
+  import transaction; it passed in about 0.8 seconds on the final run here.
+  This is a local observation, not a performance guarantee.
+
+Analyzer coverage includes >5 versus exactly 5, recovered spikes, sustained peaks
+and starts, recovery duration, ongoing/interrupted null duration, custom intervals,
+the strict gap boundary, interval changes, ERR, undated invalid rows, conflicting
+same-time values, assignment endings, calendar/leap/year boundaries, cumulative
+imports, late gap filling, late recovery, repeat analysis/uploads, historical
+ownership, logger moves and returns, date-range overlap, and unaffected scopes.
+An injected failure after deleting/reinserting findings verified rollback of
+findings, readings, and import rows together.
+
+Manual verification used real multipart requests to the compiled Nest application
+on port 3001, against the fresh verification database, followed by direct database
+assertions:
+
+| Scenario | Observed result |
+| --- | --- |
+| First upload ends in one high reading | No sustained incident |
+| Second upload continues highs at a 10-minute interval | One ONGOING incident, peak 7.1°C |
+| Recovery uploaded at 06:40 after first high at 06:10 | Same logical incident RECOVERED, duration 30 minutes |
+| Repeated high-reading upload | Two duplicates, unchanged logical findings |
+| Undated ERR with explicit assignment | Null-start INVALID_READING; recovered duration remains 30 minutes |
+| Initial historical hole | One gap and a later high incident |
+| Late readings fill the hole | Gap removed; one combined incident starts at 06:00 |
+| Logger moves to a new fridge | Prior incident INTERRUPTED with ASSIGNMENT_ENDED; both fridge scopes recomputed |
+| Explicit full analysis rebuild | Identical logical finding content/counts despite regenerated IDs |
+
+All HTTP imports returned 201. No manual checks required a frontend or new API
+endpoint beyond POST /imports.
+
+One issue was found by typecheck: the rollback test double's always-throwing
+override inferred Promise<void>. Giving it the accurate Promise<never> return
+type fixed the test typing; all checks then passed. No analyzer behavior needed
+changing during verification.
+
+The temporary server/database were removed after verification. Task 4 UI,
+notifications, reporting, and background processing remain unimplemented.

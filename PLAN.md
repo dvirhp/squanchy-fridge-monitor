@@ -26,3 +26,16 @@ sample CSVs, tests, and documentation. Application behavior must be generic;
 assignment examples are fixtures only. The implementation must demonstrate an
 unseen Ashdod / Display 7 / LOGGER-9876 context. No analyzer or frontend feature
 work is authorized by Task 2.
+
+## Task 3 approval and simplification
+
+The user approved cumulative historical temperature/data-quality analysis,
+synchronous recomputation in the import transaction, and isolated assignment
+histories. The incident types remain; startedAt may be null for undated invalid rows.
+
+The user rejected stable IDs/reconciliation and assignment-wide uncertainty from
+an undated row. Recompute affected fridge history and delete/reinsert derived
+findings atomically; logical results must be stable, not database IDs. Undated
+invalid evidence is separate and does not suppress dated analysis. Keep details
+small. Preserve one-interval continuity versus two-interval gap reporting and
+null duration for ongoing/interrupted incidents. Stop before Task 4.

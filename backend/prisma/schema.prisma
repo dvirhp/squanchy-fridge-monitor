@@ -134,7 +134,7 @@ model Incident {
   loggerId               String?
   type                   IncidentType
   /// Branch-local event times, using the same representation as Reading.
-  startedAt              String
+  startedAt              String?
   endedAt                String?
   durationMinutes        Float?
   peakTemperatureCelsius Float?
