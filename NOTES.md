@@ -46,9 +46,9 @@
 
 ## What is not done / what I would do with one more hour
 
-Task 1 only is complete after foundation verification. CSV parsing, upload,
-validation services, deduplication workflow, incident analysis, dashboard, charts,
-and business-rule tests await later tasks. There is no public GitHub remote yet.
+Task 2 adds backend CSV import, normalization, validation, and deduplication.
+Incident analysis, dashboard, charts, final upload UI, and analyzer business-rule
+tests await later tasks. There is no public GitHub remote yet.
 Revisit this section honestly near submission, after the requested core tasks.
 
 ## AI usage
@@ -76,3 +76,29 @@ Prisma Client before migrating; fresh-database tests confirm this works.
 Running setup concurrently with Nest watch triggered a Windows process-restart
 race during verification. The documented sequence is setup first, then dev;
 following that sequence successfully started both applications.
+
+## Task 2 decisions and actual corrections
+
+- Names and identifiers never determine application behavior. Explicit configuration
+  controls units and expected intervals. Ashdod / Display 7 / LOGGER-9876 and other
+  invented contexts exercise the same pipeline as the assignment fixtures.
+- Header aliases are centralized and deliberately finite. Unknown/ambiguous mapping
+  and structural CSV errors reject the complete file; invalid values are retained.
+- New loggers require an explicit unit. New assignments and forward moves require
+  an explicit local start. This avoids guessing a move date from upload time.
+  All-invalid-time imports require an existing assignment ID.
+- Existing configuration cannot be changed through an upload. Overlaps, backdated
+  interval splitting, and files spanning assignments need explicit resolution.
+- Decimal arithmetic is used before converting to the existing Float storage.
+  Duplicate identity uses normalized finite numbers without display rounding.
+  Raw invalid identities include the explicit context to avoid conflating unknown
+  times across fridges. Duplicate summaries retain first-import provenance.
+- Limits are 2 MiB, 10,000 data rows, and 16 KiB per parsed record, comfortably above
+  the representative weekly sheet. Blank physical lines are not counted as rows.
+- Existing Task 1 databases receive fixture-label and canonical-key corrections
+  through setup without resetting data or changing measurement ownership.
+- Real AI correction: my initial row-number calculation relied on csv-parse's
+  line counter/raw fragments. Tests exposed wrong starting lines after blank
+  lines and quoted CRLF fields. I replaced it with byte-boundary tracking against
+  the original decoded CSV. Evidence: csv-parser.ts and the multiline/blank-line
+  regression test in csv-parser.test.ts.

@@ -17,3 +17,12 @@ empty Incident table. The foundation tests exercise these decisions.
 The original AI plan proposed UTC normalization and seeded incident fixtures.
 Those suggestions were rejected by the user and corrected before implementation.
 This is the actual correction documented in NOTES.md, not an invented example.
+
+## Task 2 approval
+
+The user approved backend-only CSV parsing, explicit column mapping, normalization,
+validation, canonical deduplication, transactional import, assignment resolution,
+sample CSVs, tests, and documentation. Application behavior must be generic;
+assignment examples are fixtures only. The implementation must demonstrate an
+unseen Ashdod / Display 7 / LOGGER-9876 context. No analyzer or frontend feature
+work is authorized by Task 2.

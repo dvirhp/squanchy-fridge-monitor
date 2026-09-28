@@ -85,3 +85,20 @@ test('readings cannot reference a different fridge than their import snapshot', 
     data: { ...data, fridgeId: moved.fridgeId, deduplicationKey: 'invalid-context-test' },
   }), { code: 'P2003' });
 });
+
+test('Task 1 fixture labels and legacy keys upgrade without changing historical IDs or values', async () => {
+  const old = await prisma.import.findUniqueOrThrow({ where: { id: 'demo-import-fahrenheit' } });
+  const reading = await prisma.reading.findUniqueOrThrow({ where: { id: 'demo-reading-fahrenheit-0' } });
+  await prisma.logger.update({ where: { id: old.loggerId }, data: { externalId: 'TL-0600' } });
+  await prisma.fridge.update({ where: { id: old.fridgeId }, data: { name: 'Pastries', normalizedName: 'pastries' } });
+  await prisma.reading.update({ where: { id: reading.id }, data: {
+    deduplicationKey: JSON.stringify([reading.loggerId, reading.recordedAt, reading.temperatureCelsius]),
+  } });
+  run('tsx/cli', ['prisma/seed.ts']);
+  const updated = await prisma.import.findUniqueOrThrow({ where: { id: old.id }, include: { logger: true, fridge: true } });
+  assert.equal(updated.logger.externalId, 'TL-0231'); assert.equal(updated.fridge.name, 'Dairy');
+  assert.equal(updated.loggerId, old.loggerId); assert.equal(updated.fridgeId, old.fridgeId);
+  const after = await prisma.reading.findUniqueOrThrow({ where: { id: reading.id } });
+  assert.equal(after.temperatureCelsius, reading.temperatureCelsius);
+  assert.equal(after.fridgeId, reading.fridgeId); assert.equal(after.deduplicationKey, reading.deduplicationKey);
+});

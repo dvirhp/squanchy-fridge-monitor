@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import { PrismaClient, TemperatureUnit } from '@prisma/client';
+import { normalizeReading } from '../src/imports/reading-normalizer';
+import { validateReading } from '../src/imports/reading-validator';
+import { readingIdentity } from '../src/imports/reading-identity';
 
 const prisma = new PrismaClient();
 
@@ -19,7 +22,7 @@ const scenarios = [
       ['2026-09-15T06:00:00', '2026-09-15 06:00', '3.8', 3.8],
       ['2026-09-15T06:15:00', '2026-09-15 06:15', '3.9', 3.9],
     ] },
-  { key: 'warming', branch: 'Rishon LeZion', fridge: 'Cream cakes', logger: 'TL-0500',
+  { key: 'warming', branch: 'Rishon LeZion', fridge: 'Cream cakes', logger: 'TL-0388',
     from: '2026-09-14T00:00:00', to: null,
     rows: [
       ['2026-09-14T06:00:00', '2026-09-14 06:00', '4.6', 4.6],
@@ -27,7 +30,7 @@ const scenarios = [
       ['2026-09-14T06:30:00', '2026-09-14 06:30', '6.3', 6.3],
       ['2026-09-14T06:45:00', '2026-09-14 06:45', '7.1', 7.1],
     ] },
-  { key: 'fahrenheit', branch: 'Haifa', fridge: 'Pastries', logger: 'TL-0600',
+  { key: 'fahrenheit', branch: 'Haifa', fridge: 'Dairy', logger: 'TL-0231',
     unit: TemperatureUnit.FAHRENHEIT, from: '2026-09-14T00:00:00', to: null,
     rows: [
       ['2026-09-14T06:00:00', '14/09/2026 06:00', '38.3', 3.5],
@@ -48,6 +51,26 @@ const scenarios = [
 
 async function main() {
   await prisma.$transaction(async tx => {
+    // Fixture-label correction only: preserve IDs, relationships, readings, and snapshots.
+    for (const [key, oldExternalId, externalId] of [
+      ['warming', 'TL-0500', 'TL-0388'], ['fahrenheit', 'TL-0600', 'TL-0231'],
+    ]) {
+      const existing = await tx.import.findUnique({ where: { id: 'demo-import-' + key }, include: { logger: true, fridge: true } });
+      if (existing?.logger.externalId === oldExternalId) {
+        await tx.logger.update({ where: { id: existing.loggerId }, data: { externalId } });
+      }
+      if (key === 'fahrenheit' && existing?.fridge.name === 'Pastries') {
+        await tx.fridge.update({ where: { id: existing.fridgeId }, data: { name: 'Dairy', normalizedName: 'dairy' } });
+      }
+    }
+    // Upgrade Task 1 identity metadata only; never rewrite measurements or attribution.
+    const legacy = await tx.reading.findMany({ where: { NOT: { deduplicationKey: { startsWith: '[1,' } } }, include: { import: true } });
+    for (const row of legacy) {
+      const normalized = validateReading(normalizeReading(row, row.import.temperatureUnit));
+      await tx.reading.update({ where: { id: row.id }, data: {
+        deduplicationKey: readingIdentity(normalized, { loggerId: row.loggerId, fridgeId: row.fridgeId, temperatureUnit: row.import.temperatureUnit }),
+      } });
+    }
     for (const scenario of scenarios) {
       const branch = await tx.branch.upsert({
         where: { normalizedName: scenario.branch.trim().toLowerCase() },
@@ -91,8 +114,11 @@ async function main() {
             rawTimestamp, rawTemperature, temperatureCelsius, sourceRowNumber: index + 2,
             status: temperatureCelsius === null ? 'INVALID' : 'VALID',
             validationError: temperatureCelsius === null ? 'Logger reported ERR' : null,
-            // Seed-only stable keys; the real importer will define canonical deduplication.
-            deduplicationKey: JSON.stringify([logger.id, recordedAt, temperatureCelsius ?? rawTemperature]),
+            deduplicationKey: readingIdentity(validateReading(normalizeReading({
+              rawTimestamp, rawTemperature, sourceRowNumber: index + 2,
+            }, scenario.unit ?? 'CELSIUS')), {
+              loggerId: logger.id, fridgeId: fridge.id, temperatureUnit: scenario.unit ?? 'CELSIUS',
+            }),
           },
           update: {},
         });
