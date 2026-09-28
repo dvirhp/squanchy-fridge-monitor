@@ -270,6 +270,9 @@ differ, continuity breaks and gap reporting uses the smaller interval.
 Timestamped ERR readings count as logger observations for gap bounds, while
 separately breaking temperature continuity. Different values at one timestamp
 form one conflicting point and an INVALID_READING finding, never consecutive highs.
+If a timestamp contains both a valid value and an invalid reading (such as ERR),
+the invalid finding is preserved and that entire point interrupts continuity;
+the valid value cannot extend or establish a sustained run.
 Undated invalid readings have null startedAt, are excluded from chronological
 sequencing, and do not suppress supported dated incidents. They remain evidence
 that the dataset may be incomplete.

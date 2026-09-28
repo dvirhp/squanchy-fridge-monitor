@@ -70,6 +70,29 @@ test('identical same-time observations do not count as two consecutive highs', (
   const rows = readings([6, 6]); rows[1].recordedAt = rows[0].recordedAt;
   assert.equal(analyze(rows).findings.length, 0);
 });
+test('a valid high and ERR at the same timestamp preserve invalid evidence and interrupt high runs', () => {
+  const rows = readings([6, 7, 9, null, 8]);
+  rows[3].recordedAt = rows[2].recordedAt;
+  rows[4].recordedAt = '2038-10-04T06:45:00';
+  const prepared = prepareObservations(rows);
+  assert.equal(prepared.invalidFindings.length, 1);
+  assert.equal(prepared.invalidFindings[0].type, 'INVALID_READING');
+  assert.equal(prepared.invalidFindings[0].startedAt, '2038-10-04T06:30:00');
+  assert.equal(prepared.invalidFindings[0].details.readingId, rows[3].id);
+  assert.equal(prepared.invalidFindings[0].details.reason, 'ERR');
+
+  const result = analyzeTemperature(prepared.observations, false);
+  assert.equal(result.findings.length, 1);
+  const [incident] = result.findings;
+  assert.equal(incident.details.state, 'INTERRUPTED');
+  assert.equal(incident.details.interruptionReason, 'INVALID_READING');
+  assert.equal(incident.details.lastObservedHighAt, '2038-10-04T06:15:00');
+  assert.equal(incident.peakTemperatureCelsius, 7);
+  assert.equal(incident.endedAt, null);
+  assert.equal(incident.durationMinutes, null);
+  // With only one preceding high, the ambiguous point cannot create a run either.
+  assert.equal(analyzeTemperature(prepared.observations.slice(1), false).findings.length, 0);
+});
 test('sampling interval change interrupts even when observations are close', () => {
   const rows = readings([6, 7, 8, 9], 10); rows[2].expectedIntervalMinutes = 15; rows[3].expectedIntervalMinutes = 15;
   const result = analyze(rows);
