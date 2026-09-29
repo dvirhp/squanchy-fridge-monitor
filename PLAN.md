@@ -22,7 +22,8 @@ empty Incident table. The foundation tests exercise these decisions.
 
 The original AI plan proposed UTC normalization and seeded incident fixtures.
 Those suggestions were rejected by the user and corrected before implementation.
-This is the actual correction documented in NOTES.md, not an invented example.
+These corrections are also documented in NOTES.md as examples of reviewed AI
+suggestions.
 
 ## Task 2 approval
 
@@ -57,4 +58,19 @@ User simplifications adopted: API returns simple readings/config snapshots rathe
 than chart ticks/segments; frontend derives continuity. New entities and deliberate
 logger moves remain inside upload, with no administration screens. No full reading
 table or broad UI/snapshot suite. Recharts is approved; no UI/form/date/server-state
-framework. Stop at Task 4 after verification, without final submission work.
+framework.
+
+## Task 5 approval and final verification
+
+The user approved final submission work only: formatting, README/NOTES/sample-data
+documentation, acceptance fixtures, browser verification, clean-clone checks, and
+repository publication. No new product scope or architecture was authorized.
+
+Final review added representative acceptance CSVs and simplified the upload datetime
+input display without changing backend time semantics. Verification covered repeated
+imports, unseen entities, Fahrenheit conversion, invalid rows, gaps, cumulative
+history, desktop/mobile browser flows, tests, typecheck, production builds, and
+local setup.
+
+Final submission work did not add authentication, deployment, notifications,
+administration screens, or other production features.

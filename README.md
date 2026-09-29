@@ -8,7 +8,7 @@ It is not live monitoring and does not infer causes such as an open door.
 
 ## Run locally
 
-Prerequisites: Git, **Node.js 22.16+ within Node 22**, and **npm 10+**.
+Prerequisites: Git, **Node.js 22 (22.16 or newer)**, and **npm 10+**.
 Internet is needed for dependency/Prisma-engine installation; no account, database
 server, Docker, or paid service is required to run the app.
 
@@ -23,7 +23,8 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:5173**. Backend health:
-http://127.0.0.1:3000/health (also available through `/api/health` on the frontend).
+[http://127.0.0.1:3000/health](http://127.0.0.1:3000/health) (also available through
+`/api/health` on the frontend).
 
 Setup copies `.env.example` to `backend/.env` if absent, generates Prisma Client,
 creates/migrates SQLite, seeds illustrative readings, and runs the real analyzer.
@@ -54,7 +55,8 @@ A deliberate logger move requires its actual local start time. Import results sh
 accepted/invalid/duplicate rows and analysis totals across the affected fridges'
 accumulated history, not only newly created incidents.
 
-More fixtures and exact expected results are in [sample-data/README.md](sample-data/README.md).
+More fixtures and exact expected results are in
+[sample-data/README.md](sample-data/README.md).
 They are representative examples, not actual client-uploaded files. Setup seeds
 readings, never derived incidents.
 
@@ -100,9 +102,9 @@ readings, never derived incidents.
   Ongoing/interrupted overlap ends at the last observed high. Filters stay in the URL;
   detail navigation preserves dates. Summary counts apply before the status filter.
   Fridge history always shows undated evidence separately; dashboard cards retain its
-  count. With either date bound selected,
-  it does **not** affect period quality counts/status; without dates it contributes
-  to accumulated quality counts. “No detected issue” does not describe current conditions.
+  count. With either date bound selected, it does **not** affect period quality
+  counts/status; without dates it contributes to accumulated quality counts.
+  “No detected issue” does not describe current conditions.
 
 ## Architecture
 
@@ -153,6 +155,7 @@ deployment. Selected history is returned without pagination/downsampling; narrow
 large histories by date. See [NOTES.md](NOTES.md) for decisions, open questions,
 limitations, time reporting and actual AI corrections.
 
-[SPEC.md](SPEC.md) preserves the assignment; [PLAN.md](PLAN.md) preserves approval
-history; [VERIFICATION.md](VERIFICATION.md) records checks and known verification
-limits. These are retained as evidence of the AI-assisted workflow.
+[SPEC.md](SPEC.md) records the assignment specification used for the implementation;
+[PLAN.md](PLAN.md) preserves approval history; [VERIFICATION.md](VERIFICATION.md)
+records checks and known verification limits. These are retained as evidence of the
+AI-assisted workflow.

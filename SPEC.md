@@ -1,1165 +1,625 @@
-# Squanchy Bakery Fridge Monitor --- Implementation Spec
+# Squanchy Bakery Fridge Monitor — Product & Technical Spec
 
-## 0. Agent mission
+## 1. Purpose
 
-Build a complete take-home assignment for Triolla based on the client
-brief. Treat this document as the working implementation specification.
+This document is the consolidated product and technical specification for the
+submitted Squanchy Bakery Fridge Monitor.
 
-The goal is not to maximize feature count. Build a small, coherent,
-well-structured product that translates a non-technical client's problem
-into useful software and is easy for reviewers to run locally and
-discuss in a follow-up interview.
+It evolved from a more detailed working specification used during development.
+The original working versions remain preserved in the Git history.
 
-Work incrementally. Keep the repository history and working artifacts
-natural; do not "clean up" the development process at the end.
+The implementation was intentionally divided into five reviewed tasks, with the
+final submission task split into three focused verification and documentation
+phases. Each stage was reviewed before expanding the scope.
 
-------------------------------------------------------------------------
+`PLAN.md` preserves the staged implementation decisions and corrections, while
+`VERIFICATION.md` contains the detailed verification history.
 
-## 1. Product context
+The goal of the MVP is simple: replace Summer Smith's manual weekly Excel review
+with a local application that makes fridge temperature problems and unreliable
+logger data easier to identify and investigate.
 
-Summer Smith runs operations for Squanchy Bakery, a chain of 12
-branches. Each branch has several refrigerators with small temperature
-loggers.
+---
 
-Today, once a week, each branch manager downloads a logger file and
-emails it to Summer. Summer manually combines the data into Excel and
-looks for temperature problems. This takes most of Sunday and problems
-can still be missed.
+## 2. Problem
 
-Her main operational questions are:
+Summer runs operations for Squanchy Bakery, which has 12 branches.
 
-1.  How is every fridge doing?
-2.  Where is something wrong?
-3.  When did a fridge go above 5°C?
-4.  How long did it remain above 5°C?
-5.  Is a high reading only a temporary door-opening spike, or does it
-    indicate a sustained warming problem?
-6.  Are there gaps or invalid readings that make the data unreliable?
+Each branch has refrigerators with temperature loggers. Once a week, branch
+managers download logger files and send them to Summer. The files contain only
+time and temperature, so Summer manually adds the logger, branch and fridge
+information while combining everything in Excel.
 
-The application should turn raw logger files into a clear operational
-view.
+This process takes most of Sunday and still makes it easy to miss problems.
 
-Summer is frequently between branches and mostly checks information on
-her phone, so the UI must be responsive and mobile-friendly.
+The application should help Summer answer:
 
-------------------------------------------------------------------------
+- Which fridges need attention?
+- When did a fridge go above 5°C?
+- How long did the problem last?
+- Was a high reading only a temporary spike or sustained warming?
+- Are gaps or invalid readings making the history unreliable?
 
-## 2. Source constraints from the assignment
+The product is based on historical uploaded logger data. It is not a real-time
+monitoring system.
 
-The logger files themselves contain only:
+Summer frequently works between branches and mainly checks information on her
+phone, so the main workflows should also work well on mobile.
 
--   time
--   temperature
+---
 
-Today Summer manually adds:
+## 3. Assignment constraints
 
--   logger number
--   branch
--   fridge
+The solution must:
 
-The supplied sample data contains examples of:
+- run locally on a reviewer's laptop
+- require no external account
+- require no paid service
+- require no deployment
+- be startable from the README
+- handle approximately 3,000 rows without unnecessary infrastructure
 
--   different timestamp formats
--   different temperature representations
--   inconsistent branch capitalization
--   duplicate readings
--   an `ERR` temperature value
--   missing time ranges
--   out-of-order rows
--   a one-reading temperature spike
--   gradual sustained warming
--   a logger that was moved from one fridge to another
+The supplied examples also show several important data problems:
 
-The real weekly sheet is around 3,000 rows.
+- different timestamp formats
+- different temperature representations
+- inconsistent branch capitalization
+- duplicate readings
+- invalid values such as `ERR`
+- missing periods
+- out-of-order rows
+- isolated temperature spikes
+- gradual warming
+- a logger being moved between fridges
 
-The application must:
+These cases should be handled explicitly rather than hidden during import.
 
--   run locally on a laptop
--   require no external account
--   require no paid service
--   not require deployment
--   be startable by following the repository README
+---
 
-The submission must contain:
+## 4. Solution
 
--   a public GitHub repository
--   `README.md`
--   `NOTES.md`
+The MVP has three main user-facing workflows.
 
-------------------------------------------------------------------------
+### Dashboard
 
-## 3. Chosen technical stack
+Show all fridges together and make the ones requiring attention easy to find.
 
-Use a simple monorepo/repository structure.
+Temperature problems and data-quality problems are shown separately because a
+bad temperature and unreliable data mean different things operationally.
+
+The dashboard supports simple date, branch and status filtering.
+
+### Upload
+
+Summer uploads a logger CSV and supplies the context that is not contained in
+the file:
+
+- logger
+- branch
+- fridge
+
+The system parses, normalizes and validates the readings before storing them.
+
+The same workflow can introduce a new logger/location or explicitly record a
+logger moving to another fridge.
+
+### Fridge history
+
+A fridge details page shows:
+
+- temperature history
+- the 5°C threshold
+- sustained temperature incidents
+- data gaps
+- invalid-reading evidence
+- historical date filtering
+
+This is the main view for answering the inspector's operational question:
+when did this fridge go above 5°C, and for how long?
+
+The MVP answers this from the available historical observations rather than
+claiming more precision than the logger data provides.
+
+---
+
+## 5. Technical stack
 
 ### Frontend
 
--   React
--   TypeScript
--   Vite
--   React Router
--   a lightweight chart library if needed
--   plain CSS/CSS modules or another lightweight styling approach; avoid
-    unnecessary UI-framework complexity
+- React
+- TypeScript
+- Vite
+- React Router
+- Recharts
+- plain CSS
 
 ### Backend
 
-Use:
+- Node.js
+- TypeScript
+- NestJS
 
--   Node.js
--   TypeScript
--   NestJS
+### Persistence
 
-NestJS is preferred here because it gives clear
-module/service/controller boundaries and makes the parsing and analysis
-domain logic easy to organize and test.
+- SQLite
+- Prisma ORM
 
-Do not introduce microservices.
+SQLite was chosen because the assignment is local-first and relational while
+requiring no database server or external service.
 
-### Database
+NestJS provides clear controller/service boundaries without requiring additional
+infrastructure.
 
-Use:
+The application remains a small monolith. Microservices, queues, Redis, Kafka
+and cloud infrastructure would add complexity without solving a requirement of
+this take-home.
 
--   SQLite
--   Prisma ORM
+---
 
-Reasons:
-
--   fully local
--   relational
--   zero external infrastructure
--   easy setup for reviewers
--   appropriate relationships for branches, fridges, loggers, imports,
-    readings and incidents
-
-The database file must not require a separately installed database
-server.
-
-### Testing
-
-Add focused tests for business-critical logic, especially:
-
--   parsing/normalization
--   Fahrenheit conversion
--   duplicate handling
--   invalid readings
--   gap detection
--   spike vs sustained incident detection
-
-Do not chase meaningless coverage percentages.
-
-------------------------------------------------------------------------
-
-## 4. Repository structure
-
-Preferred structure:
-
-``` text
-squanchy-fridge-monitor/
-├── frontend/
-│   ├── src/
-│   │   ├── api/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── types/
-│   │   └── utils/
-│   └── ...
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── seed.ts
-│   ├── src/
-│   │   ├── branches/
-│   │   ├── fridges/
-│   │   ├── loggers/
-│   │   ├── imports/
-│   │   ├── readings/
-│   │   ├── incidents/
-│   │   └── common/
-│   └── ...
-├── sample-data/
-├── README.md
-├── NOTES.md
-└── SPEC.md
-```
-
-Exact folder names may change if there is a good reason, but keep domain
-boundaries clear.
-
-------------------------------------------------------------------------
-
-## 5. Core domain model
-
-Design the schema relationally.
+## 6. Domain model
 
 ### Branch
 
-Represents a bakery branch.
+Represents one bakery branch.
 
-Suggested fields:
-
--   `id`
--   `name`
--   timestamps
-
-Branch names should be normalized for matching so `Tel Aviv` and
-`tel aviv` do not accidentally become different branches.
+Branch names are normalized for matching so capitalization differences such as
+`Tel Aviv` and `tel aviv` do not create separate branches.
 
 ### Fridge
 
-Represents a physical refrigerator.
+Represents a physical refrigerator belonging to a branch.
 
-Suggested fields:
-
--   `id`
--   `name`
--   `branchId`
--   timestamps
-
-Relationship:
-
--   Branch 1 → many Fridges
+A fridge owns historical readings and derived findings.
 
 ### Logger
 
 Represents a physical temperature logger.
 
-Suggested fields:
+A logger is deliberately separate from a fridge because the assignment shows
+that a logger can move between refrigerators.
 
--   `id`
--   `externalId`, e.g. `TL-0417`
--   unit/configuration if known
--   timestamps
-
-Important: a logger is NOT permanently equivalent to a fridge.
-
-The brief explicitly demonstrates that a logger may be moved from one
-fridge to another.
+Logger configuration also stores information such as its temperature unit rather
+than guessing the unit from individual numeric values.
 
 ### LoggerAssignment
 
-Track which fridge a logger belongs/belonged to over time.
+Represents the period during which a logger belongs to a fridge.
 
-Suggested fields:
-
--   `id`
--   `loggerId`
--   `fridgeId`
--   `validFrom`
--   `validTo` nullable
-
-Relationships:
-
--   Logger 1 → many assignments
--   Fridge 1 → many logger assignments
-
-This allows `TL-0417` to belong to `Walk-in` during one period and later
-`Display 2`.
+This preserves historical ownership when a logger moves. Moving a logger today
+must not reattribute readings that were previously collected from another fridge.
 
 ### Import
 
-Represents one uploaded logger file.
-
-Suggested fields:
-
--   `id`
--   original filename
--   loggerId
--   fridgeId / assignment context
--   importedAt
--   row counts
--   accepted/rejected/duplicate counts where useful
+Represents one uploaded logger file and records its upload context and result.
 
 ### Reading
 
-Represents a normalized logger reading.
+Represents imported evidence.
 
-Suggested fields:
+A reading keeps the normalized values used by the application while preserving
+raw information needed to explain invalid input.
 
--   `id`
--   `loggerId`
--   `fridgeId`
--   `importId`
--   `recordedAt`
--   `temperatureCelsius` nullable
--   `rawTemperature`
--   `status` / validity information
--   timestamps
-
-Preserve enough raw information to explain what was received rather than
-silently losing bad data.
-
-Add an appropriate uniqueness strategy to prevent exact duplicate
-readings from affecting analysis.
+Historical logger/fridge context is preserved with the imported reading.
 
 ### Incident
 
-Represents a derived operational/data-quality event.
+Represents a derived finding such as:
 
-Suggested types:
+- temperature incident
+- data gap
+- invalid reading
 
--   `TEMPERATURE`
--   `DATA_GAP`
--   `INVALID_READING`
+Incidents are derived from readings and can therefore be recomputed when new
+historical evidence is imported.
 
-Suggested fields:
+---
 
--   `id`
--   `fridgeId`
--   `loggerId` where relevant
--   `type`
--   `startedAt`
--   `endedAt` nullable
--   `durationMinutes` nullable
--   `peakTemperatureCelsius` nullable
--   metadata/details if useful
+## 7. Import and normalization rules
 
-Do not over-generalize the model if separate domain types are cleaner.
+Logger files contain only time and temperature. Logger, branch and fridge context
+comes from the upload form.
 
-------------------------------------------------------------------------
+The import pipeline is:
 
-## 6. Upload workflow
-
-Primary workflow:
-
-``` text
-Select logger file
-      ↓
-Select/enter logger
-      ↓
-Select branch
-      ↓
-Select fridge
-      ↓
-Upload
-      ↓
+```text
+CSV
+ ↓
 Parse
-      ↓
+ ↓
 Normalize
-      ↓
+ ↓
 Validate
-      ↓
+ ↓
+Deduplicate
+ ↓
+Resolve historical context
+ ↓
 Analyze
-      ↓
+ ↓
 Persist
-      ↓
-Show import result/dashboard
 ```
 
-The actual logger file should contain only time and temperature.
+Parsing and normalization are kept outside the HTTP controller so the behavior
+can be tested independently.
 
-The UI therefore supplies the contextual information that Summer
-currently adds manually:
+### Timestamps
 
--   logger
--   branch
--   fridge
+The demonstrated formats include:
 
-If the selected logger is being associated with a different fridge than
-its current assignment, handle/update the assignment history rather than
-rewriting historical readings.
-
-------------------------------------------------------------------------
-
-## 7. File parsing requirements
-
-Create a dedicated parsing/normalization layer. Do not bury parsing
-logic inside an HTTP controller.
-
-### Required behavior
-
-The parser should be tolerant of realistic differences in logger
-exports.
-
-At minimum:
-
--   identify time/timestamp column
--   identify temperature column
--   tolerate column order differences
--   normalize timestamps into one internal representation
--   sort readings chronologically before analysis
--   preserve/report invalid rows
--   prevent exact duplicates from changing analysis
-
-Because the assignment does not provide actual logger files, create
-representative CSV files under `sample-data/`.
-
-Keep invented formats reasonable and document the assumptions.
-
-### Timestamp normalization
-
-Support the formats demonstrated by the supplied sample, including:
-
-``` text
+```text
 2026-09-14 06:00
 14/09/2026 06:00
 ```
 
-Store normalized timestamps consistently.
+Source timestamps are treated as branch-local times.
 
-Do not invent timezone complexity unless necessary. Document the chosen
-assumption.
+The assignment provides no timezone information, so the MVP does not invent UTC
+conversion that could shift the historical readings.
 
-### Temperature normalization
+Slash-formatted dates are interpreted as `DD/MM/YYYY`, matching the supplied
+example. The MVP does not attempt to guess between `DD/MM/YYYY` and
+`MM/DD/YYYY` for ambiguous values.
 
-The Haifa logger uses a different numeric representation. The working
-assumption for this implementation is that it reports Fahrenheit.
+### Temperature units
 
-Convert Fahrenheit to Celsius using:
+The legacy logger values in the assignment are consistent with Fahrenheit, so
+the MVP supports explicit Fahrenheit logger configuration and converts those
+values to Celsius.
 
-``` text
+```text
 C = (F - 32) × 5 / 9
 ```
 
-Examples:
+The system does not infer Fahrenheit merely because a temperature value looks
+large.
 
-``` text
-38.3°F ≈ 3.5°C
-39.0°F ≈ 3.9°C
-```
+Whether the legacy logger actually reports Fahrenheit remains an assumption to
+confirm with Summer before production use.
 
-Important: the original client brief does NOT explicitly say the unit is
-Fahrenheit. This is an implementation assumption and must be documented
-in `NOTES.md` and listed as something to confirm with Summer before
-production.
+### Invalid readings
 
-Prefer logger-level configuration/metadata over guessing the unit
-independently for every individual reading.
+Values such as:
 
-### Invalid values
-
-Example:
-
-``` text
+```text
 ERR
 ```
 
-Do not convert this to `0`. Do not silently discard it.
+are preserved as invalid evidence.
 
-Record/report it as an invalid reading/data-quality issue.
+They are not converted to zero and are not silently discarded.
 
-### Duplicate readings
+### Duplicates
 
-Treat an exact repeated reading for the same logger/timestamp/value as a
-duplicate and ensure it does not affect temperature analysis.
+An exact repeated measurement for the same logger, timestamp and normalized
+value must not affect analysis.
 
-Report duplicate handling in the import summary where practical.
+Duplicate handling works across uploads as well as within a single file, so
+renaming and uploading the same export does not create new historical evidence.
 
-------------------------------------------------------------------------
+### Conflicting readings
 
-## 8. Gap detection
+Multiple readings for the same logger and timestamp with different normalized
+values are treated as conflicting observations rather than ordinary duplicates.
 
-Summer explicitly says files sometimes contain gaps of a few hours.
+Conflicting observations should not be used as if they were reliable continuous
+temperature evidence.
 
-The application should detect suspicious gaps between expected readings.
+### Ordering
 
-The sample suggests readings commonly occur every 15 minutes. For this
-take-home, choose and document a clear rule.
+Files do not need to arrive in chronological order. Valid observations are
+ordered chronologically for analysis.
 
-Recommended MVP rule:
+---
 
--   infer/use an expected 15-minute interval for the provided sample
-    data
--   flag a `DATA_GAP` when the interval is materially larger than
-    expected
--   do not claim to know WHY the gap happened
+## 8. Temperature analysis
 
-The UI may say:
+The threshold supplied by the client is:
 
-``` text
-Missing data
-No readings between 06:15 and 08:30
-```
-
-It must NOT say:
-
-``` text
-Battery died
-```
-
-because the available data does not establish the cause.
-
-Keep the threshold/configuration easy to change.
-
-------------------------------------------------------------------------
-
-## 9. Temperature analysis rules
-
-The health threshold from the client is:
-
-``` text
+```text
 temperature > 5°C
 ```
 
-But a single high reading can happen when a door is opened for a
-delivery and should not automatically become a serious incident.
+Exactly 5°C is therefore not considered above the threshold.
 
-### Working MVP rule
+A single high reading should not automatically become a serious incident because
+Summer explained that opening a fridge door can temporarily increase the reading.
 
-Use consecutive readings to distinguish a temporary spike from a
-sustained temperature incident.
+For the MVP:
 
-Recommended:
+```text
+one isolated reading > 5°C followed by recovery
+→ temporary spike
 
-``` text
-one isolated reading > 5°C
-followed by recovery
-→ temporary spike, not a temperature incident
-
-2 or more consecutive valid readings > 5°C
-→ TEMPERATURE incident
+two or more consecutive valid readings > 5°C
+→ sustained temperature incident
 ```
 
-Keep this rule centralized/configurable rather than scattering `5` and
-`2` throughout the code.
+This is an implementation rule rather than a client-provided duration and should
+be confirmed before production use.
 
-### Example: temporary spike
+A recovered incident records:
 
-Tel Aviv Walk-in:
+- first observed high reading
+- recovery observation
+- sampling-based duration
+- peak temperature
 
-``` text
-05:45  4.0
-06:00  4.1
-06:15  9.4
-06:30  4.3
+The duration represents what can be established from the available observations;
+it is not an estimate of the exact physical moment the temperature crossed 5°C.
+
+If an incident is still ongoing or the evidence is interrupted, complete duration
+remains unknown. The application does not extend historical evidence to the
+current clock time.
+
+### Gradual warming
+
+The supplied example also highlights gradual warming as operationally important.
+
+The MVP detects this once the readings cross the configured 5°C threshold and
+form a sustained incident. It does not attempt to predict a future threshold
+violation from an upward trend that is still below 5°C.
+
+Pre-threshold trend detection would require an agreed definition of meaningful
+rate-of-change, time window and alert sensitivity. Those rules were not provided
+in the assignment, so they are left as a production follow-up rather than
+invented for the MVP.
+
+---
+
+## 9. Continuity and data quality
+
+Temperature analysis depends on continuous evidence.
+
+Invalid observations, multiple readings for the same logger and timestamp with
+different normalized values, assignment changes or missing expected observations
+can interrupt a temperature run.
+
+Data-gap reporting is related but separate.
+
+The supplied data suggests a 15-minute sampling interval. The MVP reports a
+`DATA_GAP` when the distance between observations is greater than two expected
+intervals.
+
+This means continuity analysis may be conservative even where the missing period
+is not yet large enough to be reported as a separate `DATA_GAP`.
+
+This distinction prevents the application from pretending a temperature stayed
+high through evidence that is not actually present.
+
+A gap describes only what is known:
+
+```text
+No readings between 06:15 and 08:30
 ```
 
-Interpretation:
+It does not claim a cause such as battery failure.
 
--   high reading detected
--   immediately recovers
--   not a sustained temperature incident
+Undated invalid evidence is retained, but it cannot be assigned to a selected
+historical date range. When date filters are active it remains visible separately
+without changing that period's status or counts.
 
-It can still be visible in the detailed chart/history as contextual
-information if useful.
+---
 
-### Example: sustained warming
+## 10. Historical behavior
 
-Rishon LeZion Cream cakes:
+Uploads accumulate into fridge history.
 
-``` text
-06:00  4.6
-06:15  5.4
-06:30  6.3
-06:45  7.1
-```
+Analysis must therefore operate across import boundaries rather than treating
+each weekly file as an independent dataset.
 
-Interpretation:
+This matters when:
 
--   sustained readings above threshold
--   temperature continues to rise
--   create a temperature incident
+- one week's file starts an incident and another provides the recovery
+- late readings fill a previously detected gap
+- historical evidence changes the shape of an incident
+- a logger later moves to another fridge
 
-The incident should expose enough information to answer:
+For affected fridges, derived findings are recomputed from the available
+historical evidence.
 
--   when it started
--   when it ended, if it ended
--   duration
--   peak temperature
+Stable database IDs for derived incidents are not required by the MVP. The
+important property is deterministic logical results.
 
-Be careful when data gaps make duration uncertain. Do not manufacture
-precision that the readings do not support.
+This avoids introducing reconciliation infrastructure for records that are not
+externally referenced.
 
-------------------------------------------------------------------------
+---
 
-## 10. Dashboard requirements
+## 11. API and application boundaries
 
-The dashboard's primary job is NOT to display thousands of raw readings.
+The API is intentionally small and supports product workflows rather than generic
+CRUD administration.
 
-It should answer:
+The main backend capabilities are:
 
-> Where does Summer need to look?
+- import logger data
+- retrieve dashboard history and status
+- retrieve fridge history
+- retrieve upload context and configuration
 
-Use a mobile-first card-based design.
+Controllers remain thin.
 
-Suggested top summary:
+Parsing, normalization, validation and analysis remain separate from presentation
+and are independently testable.
 
-``` text
-Fridge Monitor
+The frontend is responsible for presentation concerns such as chart segmentation.
+The backend remains responsible for business findings such as incidents and gaps.
 
-12 branches
-X fridges
+---
 
-Problems: N
-Data issues: N
-Healthy: N
-```
+## 12. UX principles
 
-Each fridge card should communicate at a glance:
+The dashboard is an operational summary, not a raw-reading viewer.
 
--   branch
--   fridge
--   latest valid temperature
--   status
--   latest relevant issue
+Problems are prioritized ahead of unaffected fridges.
 
-Example:
+Temperature issues and data-quality issues remain visually distinct.
 
-``` text
-Rishon LeZion
-Cream cakes
+The fridge page provides deeper historical evidence only when Summer needs it,
+including the information required to answer when a sustained threshold incident
+started, when it recovered and its observable duration where determinable.
 
-Problem
-7.1°C
+The upload workflow contains the small amount of entity management required by
+the product rather than introducing separate administration screens.
 
-Sustained temperature issue
-Above 5°C since 06:15
-```
+The application handles:
 
-Another:
+- loading
+- empty states
+- API failures
+- retry
+- invalid filters
+- upload validation errors
 
-``` text
-Jerusalem
-Dairy
+The primary pages are designed to remain usable on phone-sized screens.
 
-Data issue
-Missing readings
-06:15–08:30
-```
+---
 
-Prioritize problematic fridges visually/order-wise over healthy ones.
+## 13. Intentional scope limits
 
-Possible filters:
+The MVP does not include:
 
--   All
--   Problems
--   Data issues
--   Healthy
+- authentication or permissions
+- notifications
+- real-time logger integration
+- predictive or pre-threshold warming-trend detection
+- background processing
+- cloud deployment
+- Redis or messaging infrastructure
+- microservices
+- administration panels
+- downloadable inspector reports
+- large-history pagination or downsampling
 
-Do not overbuild filtering unless time allows.
+These may matter in a production system, but they are not necessary to
+demonstrate the client's core workflow in this assignment.
 
-------------------------------------------------------------------------
+---
 
-## 11. Fridge details page
+## 14. Implementation stages
 
-Clicking/tapping a fridge should open a details page.
+The implementation was intentionally divided into five tasks.
 
-Show:
+Each task expanded the product only after the previous stage had been reviewed.
+Detailed task history and verification are kept in `PLAN.md` and
+`VERIFICATION.md` rather than duplicated here.
 
-### Header/status
+### Task 1 — Foundation
 
--   branch
--   fridge
--   current/latest status
--   latest valid temperature
--   logger
+Established the React/NestJS workspace, Prisma/SQLite model, migrations, seed
+data, health check and local setup.
 
-### Temperature chart
+The main early decisions were to preserve branch-local timestamps, separate
+loggers from fridges, preserve historical logger assignments and derive findings
+from source readings rather than seeding incidents directly.
 
-Plot temperature over time.
+CSV ingestion, analysis and product UI were intentionally left for later stages.
 
-Include a visible 5°C threshold if the chart library makes this
-straightforward.
+### Task 2 — Import pipeline
 
-The chart should make a one-reading spike visually distinguishable from
-gradual warming.
+Added CSV parsing, normalization, validation, deduplication, explicit
+temperature-unit handling, historical assignment resolution and transactional
+persistence.
 
-### Incident history
+The import path was designed to work with unseen logger, branch and fridge
+values rather than only the supplied examples.
 
-For each sustained temperature incident show:
+Testing exposed an incorrect source-line tracking assumption around blank and
+quoted CSV records. The parser was corrected and the regression was retained.
 
--   start
--   end / ongoing
--   duration where determinable
--   peak temperature
+### Task 3 — Historical analysis
 
-This view is what allows Summer to answer the Ministry of Health
-inspector.
+Added accumulated-history analysis for sustained temperature incidents,
+temporary spikes, data gaps and invalid-reading evidence.
 
-### Data-quality information
+Analysis respects continuity, historical logger assignments and late historical
+imports.
 
-Show relevant:
+A more complex stable-ID reconciliation mechanism for derived incidents was
+considered but rejected. Deterministic recomputation was sufficient for the MVP.
 
--   gaps
--   invalid readings
+### Task 4 — Product UI
 
-Do not overwhelm the primary operational view with every raw
-implementation detail.
+Added the dashboard, CSV upload workflow and fridge history view, including
+historical filters, temperature/data-quality findings, charting and responsive
+layouts.
 
-------------------------------------------------------------------------
+The API remains focused on historical product data while chart-specific
+presentation logic stays in the frontend.
 
-## 12. Import result
+Separate administration screens and a raw-reading table were deliberately
+avoided.
 
-After an upload, show a concise result such as:
+### Task 5 — Submission readiness
 
-``` text
-Import complete
+No new product scope was introduced.
 
-Accepted readings: 94
-Duplicates ignored: 1
-Invalid readings: 1
-Data gaps found: 1
-Temperature incidents found: 1
-```
+The final task was divided into three phases:
 
-If the entire file cannot be understood, fail clearly with an actionable
-error rather than partially inventing mappings.
+1. code formatting and automated verification
+2. documentation and requirement audit
+3. fresh-clone and reviewer-flow verification
 
-------------------------------------------------------------------------
+Representative acceptance CSVs were added so the main business scenarios can be
+reproduced through the actual upload workflow.
 
-## 13. Seed/sample data
+Detailed verification results are kept in `VERIFICATION.md`.
 
-The repository must be demonstrable immediately after local setup.
+---
 
-Create sample data based on the supplied assignment examples and, where
-needed, additional clearly invented data.
+## 15. Definition of done
 
-Ensure the demo contains at least:
+The MVP is ready when a reviewer can:
 
-1.  healthy fridge
-2.  one-reading spike
-3.  sustained warming incident
-4.  Fahrenheit logger
-5.  invalid `ERR` reading
-6.  duplicate reading
-7.  data gap
-8.  logger moved between fridges
-9.  inconsistent branch capitalization / normalization case
+1. clone the public repository
+2. install and set it up without an external account or database
+3. start the frontend and backend locally
+4. see useful seeded fridge history
+5. upload a logger CSV with logger, branch and fridge context
+6. see normalization, invalid and duplicate handling
+7. see gaps and sustained temperature incidents
+8. see an isolated spike remain distinct from a sustained incident
+9. inspect historical fridge temperature data and incident duration where known
+10. use the main workflow on a mobile-sized screen
+11. run the focused automated test suite
+12. understand the assumptions and tradeoffs from the repository documentation
 
-Do not pretend invented data came from the client.
+---
 
-------------------------------------------------------------------------
+## 16. Open production questions
 
-## 14. API design
+The following points would need confirmation with Summer before production use:
 
-Keep the API small and RESTful.
+- Is the legacy logger actually reporting Fahrenheit?
+- What sampling intervals are expected for each logger model?
+- What duration above 5°C should be considered operationally actionable?
+- Should gradual warming below 5°C trigger an early warning, and if so, what
+  rate-of-change and time window should define it?
+- Can temperature thresholds vary by fridge or product?
+- Should missing data trigger an alert?
+- How are logger moves recorded in the real operational process?
+- What additional CSV formats or header names exist in real exports?
+- Does the inspector need an exportable report?
+- What historical retention period is required?
+- What timezone and daylight-saving rules apply to each branch?
 
-Possible endpoints:
+These are intentionally treated as open questions rather than invented client
+requirements.
 
-``` text
-POST   /imports
-GET    /branches
-GET    /fridges
-GET    /fridges/:id
-GET    /fridges/:id/readings
-GET    /fridges/:id/incidents
-GET    /dashboard
-```
+---
 
-Exact routes may be adjusted if the resulting design is cleaner.
+## 17. Supporting documentation
 
-Do not create CRUD endpoints simply because entities exist. Build
-endpoints that serve the actual product flows.
+`README.md` is the source for current setup instructions and user-facing behavior.
 
-Use DTO validation for upload metadata and request inputs.
+`NOTES.md` records final decisions, assumptions, limitations, open questions and
+AI usage.
 
-------------------------------------------------------------------------
+`PLAN.md` preserves the staged implementation decisions, approvals and
+corrections.
 
-## 15. Backend architecture
+`VERIFICATION.md` preserves detailed test, browser and clean-clone verification
+history.
 
-Keep responsibilities separated.
-
-Example flow:
-
-``` text
-ImportsController
-      ↓
-ImportsService
-      ↓
-LoggerFileParser
-      ↓
-ReadingNormalizer
-      ↓
-ReadingValidator
-      ↓
-TemperatureAnalyzer / IncidentDetector
-      ↓
-Repositories / Prisma
-```
-
-Principles:
-
--   controllers remain thin
--   parsing is testable independently
--   normalization is testable independently
--   incident rules are pure/testable where practical
--   persistence concerns do not define domain rules
--   constants/config contain thresholds
--   errors are explicit and understandable
-
-Do not introduce queues, Redis, Kafka, WebSockets, microservices or
-cloud infrastructure. They do not solve the stated take-home problem.
-
-------------------------------------------------------------------------
-
-## 16. Frontend architecture
-
-Suggested pages:
-
-``` text
-/
-Dashboard
-
-/upload
-Upload/import
-
-/fridges/:id
-Fridge details
-```
-
-Suggested reusable components:
-
--   `StatusBadge`
--   `FridgeCard`
--   `SummaryCards`
--   `UploadForm`
--   `TemperatureChart`
--   `IncidentList`
--   `DataQualityNotice`
-
-Keep server state/API access separated from presentation components.
-
-Handle:
-
--   loading
--   empty state
--   API error
--   upload success/error
-
-Design mobile-first, then expand cleanly to desktop.
-
-------------------------------------------------------------------------
-
-## 17. Status model
-
-Keep operational status simple.
-
-Suggested fridge-level statuses:
-
-``` text
-HEALTHY
-TEMPERATURE_PROBLEM
-DATA_ISSUE
-```
-
-If both a temperature problem and a data issue exist, the API/UI should
-be able to expose both underlying issues even if one primary status is
-chosen for the card.
-
-Do not conflate:
-
--   bad temperature
--   missing data
--   invalid logger output
-
-They mean different things operationally.
-
-------------------------------------------------------------------------
-
-## 18. Out of scope
-
-Do NOT build these for the MVP unless all core requirements are already
-excellent:
-
--   authentication
--   roles/permissions
--   SMS alerts
--   email alerts
--   push notifications
--   real-time hardware integration
--   background queues
--   Redis
--   Kafka
--   microservices
--   Kubernetes
--   AWS/cloud deployment
--   paid services
--   elaborate admin panels
-
-These can be mentioned as future production considerations if relevant.
-
-------------------------------------------------------------------------
-
-## 19. README.md requirements
-
-Create the README as part of the implementation, not as an afterthought.
-
-It must let a reviewer go from clone to running in a few minutes.
-
-Include:
-
-### Project overview
-
-Short explanation of the client problem and solution.
-
-### Tech stack
-
-Frontend, backend, database.
-
-### Prerequisites
-
-For example:
-
--   Node.js supported version
--   npm
-
-Avoid requiring anything else if possible.
-
-### Quick start
-
-Prefer a root-level developer experience such as:
-
-``` bash
-npm install
-npm run setup
-npm run dev
-```
-
-or another equally simple approach.
-
-If workspaces/root scripts make this clean, use them.
-
-`setup` should ideally:
-
--   install/prepare what is needed
--   generate Prisma client
--   create/migrate SQLite database
--   seed demo data
-
-Do not make the reviewer manually execute a long sequence of commands.
-
-### URLs
-
-Document frontend/backend local URLs.
-
-### Running tests
-
-One clear command if possible.
-
-### Architecture
-
-Brief description and simple text diagram.
-
-### Business rules
-
-Document:
-
--   5°C threshold
--   spike vs sustained incident
--   gap rule
--   Fahrenheit assumption
--   duplicate behavior
-
-### Sample files
-
-Explain where they are and how to test uploads.
-
-------------------------------------------------------------------------
-
-## 20. NOTES.md requirements
-
-This file is explicitly required by Triolla.
-
-Keep it concise, candid and useful.
-
-Use these sections:
-
-### Time spent
-
-Leave a placeholder to fill honestly at submission time.
-
-``` text
-- Total: TODO before submission
-```
-
-### Decisions I made
-
-Include decisions such as:
-
--   React + Node/NestJS
--   SQLite/Prisma for zero-service local execution
--   mobile-first dashboard
--   logger-to-fridge assignment history
--   Fahrenheit assumption for the legacy Haifa logger
--   isolated spike vs sustained incident rule
--   gap detection rule
--   duplicate handling
--   preserving/reporting invalid readings
-
-Explain WHY, not only what.
-
-### Questions for Summer before production
-
-Include questions such as:
-
-1.  Is the Haifa legacy logger actually reporting Fahrenheit?
-2.  What exact duration above 5°C should count as an actionable
-    incident?
-3.  What is the expected sampling interval for each logger model?
-4.  Can different logger models export different column names/formats?
-5.  Should missing data itself trigger an operational alert?
-6.  When a logger moves to another fridge, how is that move recorded
-    operationally?
-7.  Are thresholds always 5°C, or can they vary by fridge/product type?
-8.  Does the inspector need downloadable/exportable reports?
-9.  How much historical data should be retained?
-
-Do not answer these as if the client provided answers.
-
-### What is not done / what I would do with one more hour
-
-Fill this honestly near submission.
-
-Potential examples only if they remain undone:
-
--   stronger import mapping UI
--   exportable inspector report
--   more edge-case tests
--   accessibility polish
--   richer filtering
-
-### AI usage
-
-The assignment specifically asks for:
-
--   how AI tools were used
--   one thing AI got wrong or proposed that was rejected
--   how it was caught
--   where the evidence can be seen in the repository
-
-Do NOT fabricate this now.
-
-Create a placeholder and update it during development with a REAL
-example.
-
-Example structure:
-
-``` text
-### AI usage
-
-I used [tool] for ...
-
-Rejected/corrected AI suggestion:
-- TODO: record a real example during implementation.
-- How I caught it:
-- Evidence:
-```
-
-### Additional approach notes
-
-Optionally mention tradeoffs and intentionally omitted complexity.
-
-------------------------------------------------------------------------
-
-## 21. Development process expectations
-
-Commit in logical increments.
-
-Possible progression:
-
-``` text
-chore: initialize frontend and backend
-feat: add relational data model and seed data
-feat: parse and normalize logger imports
-feat: detect temperature incidents and data gaps
-feat: add dashboard API
-feat: build mobile dashboard
-feat: add fridge history and chart
-test: cover import and incident edge cases
-docs: complete readme and assignment notes
-```
-
-Do not manufacture commits solely to make history look impressive.
-Commit as the work naturally progresses.
-
-Keep `SPEC.md`, planning notes and useful AI-agent instructions in the
-repository because Triolla explicitly wants to see how the work was
-approached.
-
-------------------------------------------------------------------------
-
-## 22. Definition of done
-
-The MVP is complete when a reviewer can:
-
-1.  clone the public repository
-2.  follow README instructions without creating an account
-3.  start frontend + backend locally
-4.  get a working local SQLite database
-5.  see meaningful seeded/demo data
-6.  upload a logger CSV
-7.  associate it with logger/branch/fridge context
-8.  have readings parsed and normalized
-9.  see invalid/duplicate/gap handling
-10. see sustained temperature incidents detected
-11. see an isolated high spike not incorrectly treated as a sustained
-    incident
-12. view a mobile-friendly dashboard
-13. open a fridge and inspect its temperature history
-14. see when a sustained \>5°C incident began and its duration where
-    determinable
-15. run focused automated tests
-16. understand the major assumptions from README/NOTES
-17. find a complete `NOTES.md` matching Triolla's requested submission
-    format
-
-------------------------------------------------------------------------
-
-# First task --- initialize the project only
-
-Start with foundation work. Do NOT attempt the entire application in one
-giant change.
-
-## Task 1 goals
-
-1.  Create the root project/repository structure.
-2.  Initialize React + TypeScript + Vite under `frontend`.
-3.  Initialize NestJS + TypeScript under `backend`.
-4.  Configure a simple root-level npm workspace/scripts if it makes
-    local startup easier.
-5.  Add Prisma + SQLite to the backend.
-6.  Create an initial relational Prisma schema for:
-    -   Branch
-    -   Fridge
-    -   Logger
-    -   LoggerAssignment
-    -   Import
-    -   Reading
-    -   Incident
-7.  Create the first migration.
-8.  Add a seed script with a small representative dataset.
-9.  Create initial `README.md`, `NOTES.md`, and keep this `SPEC.md`.
-10. Add `.gitignore` and environment example only if actually needed.
-11. Verify the frontend and backend both start locally.
-12. Verify Prisma can create/seed the local SQLite DB.
-13. Add a simple backend health endpoint and a minimal frontend shell so
-    startup can be verified.
-
-## Task 1 constraints
-
-Do not yet build:
-
--   full upload UI
--   parser
--   incident detection
--   chart
--   polished dashboard
-
-We want a clean foundation first.
-
-## Before writing code
-
-Briefly output:
-
-1.  the exact proposed repository tree
-2.  the Prisma relationships you intend to create
-3.  the root commands the reviewer will eventually use
-
-Check that the plan satisfies local/no-account/no-paid-service
-constraints.
-
-Then implement Task 1.
-
-## After Task 1
-
-Report:
-
--   files created/changed
--   commands to run
--   database schema summary
--   assumptions introduced
--   tests/checks performed
--   anything that failed or remains unresolved
-
-Then STOP and wait for the next task. Do not continue automatically into
-parser/dashboard implementation.
+This specification focuses on the product model, business rules and technical
+reasoning behind the submitted MVP.
